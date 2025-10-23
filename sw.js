@@ -1,9 +1,9 @@
-const CACHE_NAME = 'pronostics-football-v1';
+const CACHE_NAME = 'pronostics-football-v1.3';
 const urlsToCache = [
   './',
   './index.html',
-  './styles.css',
-  './app.js',
+  './styles.css?v=1.3',
+  './app.js?v=1.3',
   './manifest.json',
   'https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap',
   'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css'

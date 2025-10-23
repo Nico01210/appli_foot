@@ -1,6 +1,13 @@
 // Fonction globale simple pour changer le nom (accessible immédiatement)
 function changeUserName() {
     console.log('🖱️ Clic détecté sur le nom utilisateur (fonction globale)');
+    
+    // Éviter les conflits avec le changement en cours
+    if (uiManager && uiManager.isChangingUserName) {
+        console.log('⚠️ Changement de nom déjà en cours, annulation');
+        return;
+    }
+    
     const currentName = appData.currentUser.name;
     const newName = prompt(`🎯 Modifier votre pseudonyme\n\nPseudonyme actuel : ${currentName}\n\nNouveau pseudonyme :`, currentName);
     
@@ -9,11 +16,11 @@ function changeUserName() {
     if (newName && newName.trim() && newName.trim() !== currentName) {
         changeUserNameLogic(newName.trim());
     } else if (newName && newName.trim() === currentName) {
-        if (window.uiManager) {
+        if (uiManager) {
             uiManager.showToast('Le pseudonyme est identique', 'warning');
         }
     } else if (newName === '') {
-        if (window.uiManager) {
+        if (uiManager) {
             uiManager.showToast('Le pseudonyme ne peut pas être vide', 'error');
         }
     }
@@ -23,34 +30,124 @@ function changeUserName() {
 function changeUserNameLogic(newName) {
     console.log('🔄 Changement de nom vers:', newName);
     
+    // Marquer qu'on est en train de changer le nom
+    if (uiManager) {
+        uiManager.isChangingUserName = true;
+        console.log('✅ Flag isChangingUserName activé');
+    }
+    
     // Vérifier si le nom n'est pas déjà pris par un autre utilisateur
+    console.log('🔍 Vérification si le nom est déjà pris...');
     const existingUser = appData.users.find(u => 
         u.name.toLowerCase() === newName.toLowerCase() && u.id !== appData.currentUser.id
     );
     
     if (existingUser) {
-        if (window.uiManager) {
+        console.log('❌ Nom déjà pris par:', existingUser.name);
+        if (uiManager) {
             uiManager.showToast('Ce pseudonyme est déjà utilisé', 'error');
+            uiManager.isChangingUserName = false;
         }
         return;
     }
+    console.log('✅ Nom disponible');
 
     const oldName = appData.currentUser.name;
+    console.log('📝 Ancien nom:', oldName);
     
     // Mettre à jour le nom de l'utilisateur
+    console.log('🔄 Mise à jour des données utilisateur...');
     appData.currentUser.name = newName;
     appData.currentUser.lastActivity = new Date().toISOString();
+    console.log('✅ Données utilisateur mises à jour');
     
     // Sauvegarder
-    appData.saveUser();
-    appData.updateUserInList();
+    try {
+        console.log('💾 Sauvegarde en cours...');
+        appData.saveUser();
+        console.log('✅ saveUser() terminé');
+        
+        appData.updateUserInList();
+        console.log('✅ updateUserInList() terminé');
+    } catch (error) {
+        console.error('❌ Erreur lors de la sauvegarde:', error);
+        return;
+    }
     
     // Mettre à jour l'interface
-    if (window.uiManager) {
-        uiManager.updateHeader();
-        uiManager.renderAdmin();
-        uiManager.renderLeaderboard();
-        uiManager.showToast(`Pseudonyme modifié : ${oldName} → ${newName}`, 'success');
+    if (uiManager) {
+        console.log('🔄 Début mise à jour interface après changement de nom');
+        
+        try {
+            // Mise à jour immédiate du header avec plusieurs approches
+            console.log('🔄 Appel updateHeader()...');
+            uiManager.updateHeader();
+            console.log('✅ updateHeader() terminé');
+            
+            // Approche alternative au cas où la première ne marche pas
+            setTimeout(() => {
+                console.log('🔄 Mise à jour header - tentative 2');
+                const userNameElement = document.getElementById('userName');
+                if (userNameElement) {
+                    userNameElement.textContent = newName;
+                    userNameElement.innerHTML = newName;
+                    console.log('📝 Header forcé avec:', newName);
+                }
+            }, 50);
+            
+            // Troisième tentative plus tard
+            setTimeout(() => {
+                console.log('🔄 Mise à jour header - tentative 3');
+                uiManager.updateHeader();
+            }, 200);
+            
+            console.log('🔄 Appel renderLeaderboard()...');
+            uiManager.renderLeaderboard();
+            console.log('✅ renderLeaderboard() terminé');
+            
+            console.log('🔄 Appel renderDashboard()...');
+            uiManager.renderDashboard();
+            console.log('✅ renderDashboard() terminé');
+            
+            uiManager.showToast(`Pseudonyme modifié : ${oldName} → ${newName}`, 'success');
+        } catch (error) {
+            console.error('❌ Erreur lors de la mise à jour de l\'interface:', error);
+        }
+        
+        // Mettre à jour les informations de profil sans recharger tout l'admin
+        try {
+            console.log('🔄 Mise à jour informations profil...');
+            if (appData.currentUser.createdAt) {
+                document.getElementById('memberSince').textContent = uiManager.formatDate(appData.currentUser.createdAt);
+            }
+            if (appData.currentUser.lastActivity) {
+                document.getElementById('lastActivity').textContent = uiManager.formatDate(appData.currentUser.lastActivity);
+            }
+            console.log('✅ Informations profil mises à jour');
+        } catch (error) {
+            console.error('❌ Erreur mise à jour profil:', error);
+        }
+        
+        // S'assurer que le champ input reflète la nouvelle valeur
+        try {
+            console.log('🔄 Mise à jour champ input...');
+            const userNameInput = document.getElementById('userNameInput');
+            if (userNameInput) {
+                userNameInput.value = newName;
+                console.log('📝 Champ input mis à jour avec:', newName);
+            }
+            console.log('✅ Champ input mis à jour');
+        } catch (error) {
+            console.error('❌ Erreur mise à jour champ input:', error);
+        }
+        
+        // Finir le processus de changement de nom
+        setTimeout(() => {
+            uiManager.isChangingUserName = false;
+            console.log('✅ Fin mise à jour interface après changement de nom');
+        }, 100); // Petit délai pour s'assurer que les mises à jour DOM sont appliquées
+    } else {
+        console.error('❌ uiManager non disponible');
     }
 }
 
@@ -64,6 +161,96 @@ const CONFIG = {
     tournaments: {
         worldcup: 'Coupe du Monde 2026',
         ligue1: 'Ligue 1 2024-25'
+    },
+    teamFlags: {
+        // Équipes nationales
+        'France': '🇫🇷',
+        'Argentine': '🇦🇷',
+        'Brésil': '🇧🇷',
+        'Allemagne': '🇩🇪',
+        'Espagne': '🇪🇸',
+        'Italie': '🇮🇹',
+        'Portugal': '🇵🇹',
+        'Pays-Bas': '🇳🇱',
+        'Belgique': '🇧🇪',
+        'Angleterre': '🏴󠁧󠁢󠁥󠁮󠁧󠁿',
+        'Croatie': '🇭🇷',
+        'Maroc': '🇲🇦',
+        'Mexique': '🇲🇽',
+        'États-Unis': '🇺🇸',
+        'Canada': '🇨🇦',
+        'Japon': '🇯🇵',
+        'Corée du Sud': '🇰🇷',
+        'Australie': '🇦🇺',
+        'Suisse': '🇨🇭',
+        'Pologne': '🇵🇱',
+        'Danemark': '🇩🇰',
+        'Suède': '🇸🇪',
+        'Norvège': '🇳🇴',
+        'Autriche': '🇦🇹',
+        'République Tchèque': '🇨🇿',
+        'Hongrie': '🇭🇺',
+        'Slovaquie': '🇸🇰',
+        'Slovénie': '🇸🇮',
+        'Serbie': '🇷🇸',
+        'Grèce': '🇬🇷',
+        'Turquie': '🇹🇷',
+        'Russie': '🇷🇺',
+        'Ukraine': '🇺🇦',
+        'Irlande': '🇮🇪',
+        'Écosse': '🏴󠁧󠁢󠁳󠁣󠁴󠁿',
+        'Pays de Galles': '🏴󠁧󠁢󠁷󠁬󠁳󠁿',
+        'Roumanie': '🇷🇴',
+        'Bulgarie': '🇧🇬',
+        'Finlande': '🇫🇮',
+        'Estonie': '🇪🇪',
+        'Lettonie': '🇱🇻',
+        'Lituanie': '🇱🇹',
+        'Islande': '🇮🇸',
+        
+        // Équipes de Ligue 1
+        'PSG': '🔴🔵',
+        'Paris Saint-Germain': '🔴🔵',
+        'Marseille': '💙🤍',
+        'OM': '💙🤍',
+        'Olympique de Marseille': '💙🤍',
+        'Lyon': '🔴⚪',
+        'OL': '🔴⚪',
+        'Olympique Lyonnais': '🔴⚪',
+        'Monaco': '🔴⚪',
+        'AS Monaco': '🔴⚪',
+        'Lille': '🔴⚪',
+        'LOSC': '🔴⚪',
+        'Nice': '🔴⚫',
+        'OGC Nice': '🔴⚫',
+        'Rennes': '🔴⚫',
+        'Stade Rennais': '🔴⚫',
+        'Strasbourg': '🔵⚪',
+        'RC Strasbourg': '🔵⚪',
+        'Lens': '🟡🔴',
+        'RC Lens': '🟡🔴',
+        'Montpellier': '🔵🟠',
+        'MHSC': '🔵🟠',
+        'Nantes': '🟡🟢',
+        'FC Nantes': '🟡🟢',
+        'Reims': '🔴⚪',
+        'Stade de Reims': '🔴⚪',
+        'Toulouse': '🟣⚪',
+        'TFC': '🟣⚪',
+        'Brest': '🔴⚪',
+        'Stade Brestois': '🔴⚪',
+        'Le Havre': '🔵⚪',
+        'HAC': '🔵⚪',
+        'Clermont': '🔴🔵',
+        'Clermont Foot': '🔴🔵',
+        'Ajaccio': '🔴⚪',
+        'AC Ajaccio': '🔴⚪',
+        'Auxerre': '⚪🔵',
+        'AJ Auxerre': '⚪🔵',
+        'Troyes': '🔵⚪',
+        'ESTAC': '🔵⚪',
+        'Angers': '⚫⚪',
+        'SCO Angers': '⚫⚪'
     }
 };
 
@@ -176,7 +363,7 @@ class AppData {
                 id: 'l1_1',
                 homeTeam: 'PSG',
                 awayTeam: 'Marseille',
-                date: '2024-11-01T21:00:00',
+                date: '2024-10-20T21:00:00',
                 tournament: 'ligue1',
                 status: 'completed',
                 homeScore: 2,
@@ -186,7 +373,7 @@ class AppData {
                 id: 'l1_2',
                 homeTeam: 'Lyon',
                 awayTeam: 'Monaco',
-                date: '2024-11-03T17:00:00',
+                date: '2024-10-21T17:00:00',
                 tournament: 'ligue1',
                 status: 'upcoming',
                 homeScore: null,
@@ -196,7 +383,18 @@ class AppData {
                 id: 'l1_3',
                 homeTeam: 'Lille',
                 awayTeam: 'Nice',
-                date: '2024-11-05T20:00:00',
+                date: '2024-10-22T20:00:00',
+                tournament: 'ligue1',
+                status: 'upcoming',
+                homeScore: null,
+                awayScore: null
+            },
+            // Match en attente de confirmation (date passée mais pas encore confirmé)
+            {
+                id: 'l1_4',
+                homeTeam: 'Lens',
+                awayTeam: 'Rennes',
+                date: '2024-10-22T15:00:00',
                 tournament: 'ligue1',
                 status: 'upcoming',
                 homeScore: null,
@@ -216,13 +414,19 @@ class AppData {
     }
 }
 
-// Instance globale des données
+    // Instance globale des données
 const appData = new AppData();
+
+// Fonction utilitaire pour obtenir le drapeau d'une équipe
+function getTeamFlag(teamName) {
+    return CONFIG.teamFlags[teamName] || '⚽';
+}
 
 // Gestionnaire d'interface utilisateur
 class UIManager {
     constructor() {
         this.currentTab = 'dashboard';
+        this.isChangingUserName = false; // Flag pour éviter les conflits
         this.initializeEventListeners();
         this.updateUI();
     }
@@ -279,12 +483,54 @@ class UIManager {
             this.savePointsConfiguration();
         });
 
-        document.getElementById('saveUserName').addEventListener('click', () => {
-            const newName = document.getElementById('userNameInput').value.trim();
-            if (newName && newName !== appData.currentUser.name) {
+        // Événement pour le bouton de modification du nom d'utilisateur
+        const saveUserNameBtn = document.getElementById('saveUserName');
+        if (saveUserNameBtn) {
+            console.log('✅ Bouton saveUserName trouvé, ajout de l\'événement');
+            saveUserNameBtn.addEventListener('click', () => {
+                console.log('🖱️ Clic détecté sur le bouton Modifier (admin)');
+                const userNameInput = document.getElementById('userNameInput');
+                const newName = userNameInput.value.trim();
+                console.log('📝 Nouveau nom saisi (admin):', `"${newName}"`);
+                console.log('📝 Nom actuel:', `"${appData.currentUser.name}"`);
+                console.log('📝 Comparaison strict:', newName === appData.currentUser.name);
+                console.log('📝 Longueur nouveau nom:', newName.length);
+                console.log('📝 Longueur nom actuel:', appData.currentUser.name.length);
+                
+                if (!newName) {
+                    console.warn('⚠️ Nom vide');
+                    if (uiManager && uiManager.showToast) {
+                        uiManager.showToast('Le pseudonyme ne peut pas être vide', 'error');
+                    } else {
+                        alert('Le pseudonyme ne peut pas être vide');
+                    }
+                    return;
+                }
+                
+                if (newName === appData.currentUser.name) {
+                    console.warn('⚠️ Nom identique - annulation');
+                    if (uiManager && uiManager.showToast) {
+                        uiManager.showToast('Le pseudonyme est identique au précédent', 'warning');
+                    } else {
+                        alert('Le pseudonyme est identique au précédent');
+                    }
+                    return;
+                }
+                
+                console.log('✅ Appel de changeUserNameLogic avec:', `"${newName}"`);
+                
+                // Debug: vérifier l'état avant le changement
+                const userNameElement = document.getElementById('userName');
+                console.log('🔍 État avant changement:');
+                console.log('  - Element trouvé:', !!userNameElement);
+                console.log('  - Contenu actuel:', userNameElement ? userNameElement.textContent : 'N/A');
+                console.log('  - Style display:', userNameElement ? userNameElement.style.display : 'N/A');
+                
                 changeUserNameLogic(newName);
-            }
-        });
+            });
+        } else {
+            console.error('❌ Bouton saveUserName non trouvé!');
+        }
 
         document.getElementById('addMatchForm').addEventListener('submit', (e) => {
             e.preventDefault();
@@ -336,19 +582,49 @@ class UIManager {
     }
 
     updateHeader() {
+        console.log('🔄 Mise à jour du header avec le nom:', appData.currentUser.name);
         const userNameElement = document.getElementById('userName');
         const userPointsElement = document.getElementById('userPoints');
         
         if (userNameElement) {
+            console.log('📝 Ancien nom affiché:', `"${userNameElement.textContent}"`);
+            console.log('📝 Element trouvé:', userNameElement);
+            console.log('📝 Element parent:', userNameElement.parentElement);
+            
+            // Méthode 1: Changement direct
             userNameElement.textContent = appData.currentUser.name;
+            
+            // Méthode 2: Forcer avec innerHTML
+            userNameElement.innerHTML = appData.currentUser.name;
+            
+            // Méthode 3: Recréer l'attribut onclick pour s'assurer qu'il reste fonctionnel
+            userNameElement.setAttribute('onclick', 'changeUserName()');
+            userNameElement.setAttribute('title', 'Cliquer pour modifier votre pseudonyme');
+            
+            console.log('📝 Nouveau nom affiché:', `"${userNameElement.textContent}"`);
+            
             // S'assurer que l'élément reste cliquable
             userNameElement.style.cursor = 'pointer';
             userNameElement.style.userSelect = 'none';
-            userNameElement.title = 'Cliquer pour modifier votre pseudonyme';
+            
+            // Forcer plusieurs types de rafraîchissement
+            userNameElement.style.display = 'none';
+            userNameElement.offsetHeight; // Force reflow
+            userNameElement.style.display = 'inline';
+            
+            // Déclencher un événement de changement
+            userNameElement.dispatchEvent(new Event('change', { bubbles: true }));
             
             console.log('✅ Header mis à jour pour:', appData.currentUser.name);
         } else {
             console.error('❌ Élément userName non trouvé dans updateHeader');
+            console.log('🔍 Recherche d\'éléments similaires...');
+            const allSpans = document.querySelectorAll('span');
+            allSpans.forEach((span, index) => {
+                if (span.className.includes('user') || span.id.includes('user')) {
+                    console.log(`🔍 Span ${index}:`, span.id, span.className, span.textContent);
+                }
+            });
         }
         
         if (userPointsElement) {
@@ -413,12 +689,12 @@ class UIManager {
                 <div class="match-body">
                     <div class="match-teams">
                         <div class="team">
-                            <div class="team-flag">🏴</div>
+                            <div class="team-flag">${getTeamFlag(match.homeTeam)}</div>
                             <div class="team-name">${match.homeTeam}</div>
                         </div>
                         <div class="vs">VS</div>
                         <div class="team">
-                            <div class="team-flag">🏴</div>
+                            <div class="team-flag">${getTeamFlag(match.awayTeam)}</div>
                             <div class="team-name">${match.awayTeam}</div>
                         </div>
                     </div>
@@ -451,13 +727,23 @@ class UIManager {
                 break;
         }
 
-        filteredMatches.sort((a, b) => new Date(a.date) - new Date(b.date));
+        // Tri différent selon le filtre
+        if (filter === 'completed') {
+            // Pour les matchs terminés, trier du plus récent au plus ancien
+            filteredMatches.sort((a, b) => new Date(b.date) - new Date(a.date));
+        } else {
+            // Pour les matchs à venir, trier du plus proche au plus éloigné
+            filteredMatches.sort((a, b) => new Date(a.date) - new Date(b.date));
+        }
 
         const container = document.getElementById('matchesList');
         container.innerHTML = '';
 
         if (filteredMatches.length === 0) {
-            container.innerHTML = '<p class="text-center">Aucun match trouvé</p>';
+            const emptyMessage = filter === 'completed' ? 
+                'Aucun match terminé pour ce tournoi' : 
+                'Aucun match à venir pour ce tournoi';
+            container.innerHTML = `<p class="text-center">${emptyMessage}</p>`;
             return;
         }
 
@@ -467,40 +753,74 @@ class UIManager {
             );
 
             const matchCard = document.createElement('div');
-            matchCard.className = 'match-card';
+            matchCard.className = `match-card ${match.status === 'completed' ? 'completed-match' : ''}`;
 
             const isUpcoming = match.status === 'upcoming';
             const canPredict = isUpcoming && new Date(match.date) > new Date();
+
+            // Affichage spécial pour les matchs terminés
+            const completedMatchDisplay = match.status === 'completed' ? `
+                <div class="final-result">
+                    <div class="result-header">
+                        <i class="fas fa-check-circle"></i>
+                        <span>Résultat final</span>
+                    </div>
+                    <div class="final-score-display">
+                        <span class="team-score">${match.homeTeam} ${match.homeScore}</span>
+                        <span class="score-separator">-</span>
+                        <span class="team-score">${match.awayScore} ${match.awayTeam}</span>
+                    </div>
+                </div>
+            ` : '';
 
             matchCard.innerHTML = `
                 <div class="match-header">
                     <span class="match-tournament">${CONFIG.tournaments[match.tournament]}</span>
                     <span class="match-date">${this.formatDate(match.date)}</span>
+                    ${match.status === 'completed' ? '<span class="match-status completed"><i class="fas fa-check"></i> Terminé</span>' : ''}
                 </div>
                 <div class="match-body">
                     <div class="match-teams">
                         <div class="team">
-                            <div class="team-flag">🏴</div>
+                            <div class="team-flag">${getTeamFlag(match.homeTeam)}</div>
                             <div class="team-name">${match.homeTeam}</div>
                             ${match.status === 'completed' ? `<div class="final-score">${match.homeScore}</div>` : ''}
                         </div>
-                        <div class="vs">VS</div>
+                        <div class="vs">${match.status === 'completed' ? '-' : 'VS'}</div>
                         <div class="team">
-                            <div class="team-flag">🏴</div>
+                            <div class="team-flag">${getTeamFlag(match.awayTeam)}</div>
                             <div class="team-name">${match.awayTeam}</div>
                             ${match.status === 'completed' ? `<div class="final-score">${match.awayScore}</div>` : ''}
                         </div>
                     </div>
                     
+                    ${completedMatchDisplay}
+                    
                     ${userPrediction ? `
                         <div class="prediction-info">
-                            <div class="predicted-score">Votre pronostic: ${userPrediction.homeScore} - ${userPrediction.awayScore}</div>
+                            <div class="predicted-score">
+                                <i class="fas fa-user"></i>
+                                Votre pronostic: ${userPrediction.homeScore} - ${userPrediction.awayScore}
+                            </div>
                             ${match.status === 'completed' ? 
-                                `<div class="prediction-points ${userPrediction.points > 0 ? 'success' : 'error'}">
-                                    ${userPrediction.points > 0 ? '+' + userPrediction.points + ' points' : 'Aucun point'}
+                                `<div class="prediction-result">
+                                    <div class="prediction-points ${userPrediction.points > 0 ? 'success' : 'error'}">
+                                        <i class="fas fa-${userPrediction.points > 0 ? 'trophy' : 'times'}"></i>
+                                        ${userPrediction.points > 0 ? '+' + userPrediction.points + ' points' : 'Aucun point'}
+                                    </div>
+                                    ${userPrediction.points > 0 ? `
+                                        <div class="prediction-accuracy">
+                                            ${this.getPredictionAccuracyText(userPrediction, match)}
+                                        </div>
+                                    ` : ''}
                                 </div>` : 
-                                '<div class="prediction-points">En attente du résultat</div>'
+                                '<div class="prediction-points pending">En attente du résultat</div>'
                             }
+                        </div>
+                    ` : match.status === 'completed' ? `
+                        <div class="no-prediction">
+                            <i class="fas fa-exclamation-triangle"></i>
+                            Aucun pronostic effectué
                         </div>
                     ` : ''}
                     
@@ -514,9 +834,16 @@ class UIManager {
                         ` : ''}
                         
                         ${match.status === 'completed' && !userPrediction ? `
-                            <span class="btn btn-outline" style="opacity: 0.5;">
+                            <span class="btn btn-outline disabled">
                                 <i class="fas fa-clock"></i>
                                 Trop tard
+                            </span>
+                        ` : ''}
+                        
+                        ${match.status === 'upcoming' && new Date(match.date) <= new Date() ? `
+                            <span class="btn btn-outline disabled">
+                                <i class="fas fa-hourglass-half"></i>
+                                En cours
                             </span>
                         ` : ''}
                     </div>
@@ -595,8 +922,14 @@ class UIManager {
         document.getElementById('correctResultPoints').value = appData.pointsConfig.correctResult;
         document.getElementById('goalDifferencePoints').value = appData.pointsConfig.goalDifference;
 
-        // Charger les informations utilisateur
-        document.getElementById('userNameInput').value = appData.currentUser.name;
+        // Charger les informations utilisateur SEULEMENT si on n'est pas en train de changer le nom
+        const userNameInput = document.getElementById('userNameInput');
+        if (userNameInput && !this.isChangingUserName) {
+            // Ne mettre à jour que si l'utilisateur n'est pas en train d'éditer le champ
+            if (userNameInput !== document.activeElement) {
+                userNameInput.value = appData.currentUser.name;
+            }
+        }
         
         // Afficher les informations de profil
         if (appData.currentUser.createdAt) {
@@ -630,33 +963,117 @@ class UIManager {
         container.innerHTML = '';
 
         if (pendingMatches.length === 0) {
-            container.innerHTML = '<p>Aucun match en attente de résultat</p>';
+            container.innerHTML = '<p class="no-pending-matches">✅ Aucun match en attente de résultat</p>';
             return;
         }
+
+        // Ajouter un en-tête
+        const header = document.createElement('div');
+        header.className = 'pending-matches-header';
+        header.innerHTML = `
+            <h4><i class="fas fa-clock"></i> Matchs en attente de résultat (${pendingMatches.length})</h4>
+            <p>Ces matchs sont terminés mais leur score final n'a pas encore été confirmé.</p>
+        `;
+        container.appendChild(header);
 
         pendingMatches.forEach(match => {
             const matchDiv = document.createElement('div');
             matchDiv.className = 'pending-match';
+            
+            // Calculer le nombre de pronostics pour ce match
+            const predictionsCount = appData.predictions.filter(p => p.matchId === match.id).length;
+            
             matchDiv.innerHTML = `
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; padding: 1rem; background: var(--bg-secondary); border-radius: var(--border-radius);">
-                    <div>
-                        <strong>${match.homeTeam} vs ${match.awayTeam}</strong>
-                        <br>
-                        <small>${this.formatDate(match.date)}</small>
+                <div class="pending-match-card">
+                    <div class="pending-match-info">
+                        <div class="pending-match-teams">
+                            <span class="team-flag">${getTeamFlag(match.homeTeam)}</span>
+                            <strong>${match.homeTeam} vs ${match.awayTeam}</strong>
+                            <span class="team-flag">${getTeamFlag(match.awayTeam)}</span>
+                        </div>
+                        <div class="pending-match-details">
+                            <div class="pending-match-date">
+                                <i class="fas fa-calendar"></i>
+                                ${this.formatDate(match.date)}
+                            </div>
+                            <div class="pending-match-predictions">
+                                <i class="fas fa-users"></i>
+                                ${predictionsCount} pronostic${predictionsCount !== 1 ? 's' : ''}
+                            </div>
+                        </div>
                     </div>
-                    <div style="display: flex; gap: 0.5rem; align-items: center;">
-                        <input type="number" min="0" max="20" placeholder="0" style="width: 60px; text-align: center;" id="home_${match.id}">
-                        <span>-</span>
-                        <input type="number" min="0" max="20" placeholder="0" style="width: 60px; text-align: center;" id="away_${match.id}">
-                        <button class="btn btn-success" onclick="uiManager.updateMatchResult('${match.id}')">
+                    <div class="pending-match-actions">
+                        <div class="score-inputs-mini">
+                            <input type="number" min="0" max="20" placeholder="0" 
+                                   id="home_${match.id}" class="score-input-mini">
+                            <span class="score-separator-mini">-</span>
+                            <input type="number" min="0" max="20" placeholder="0" 
+                                   id="away_${match.id}" class="score-input-mini">
+                        </div>
+                        <button class="btn btn-success btn-confirm" onclick="uiManager.updateMatchResult('${match.id}')">
                             <i class="fas fa-check"></i>
-                            Confirmer
+                            Confirmer le score
                         </button>
                     </div>
                 </div>
             `;
             container.appendChild(matchDiv);
         });
+
+        // Ajouter une section pour voir les matchs terminés récents
+        this.addRecentCompletedMatches(container);
+    }
+
+    addRecentCompletedMatches(parentContainer) {
+        const recentCompleted = appData.matches
+            .filter(match => match.status === 'completed')
+            .sort((a, b) => new Date(b.date) - new Date(a.date))
+            .slice(0, 3);
+
+        if (recentCompleted.length > 0) {
+            const recentSection = document.createElement('div');
+            recentSection.className = 'recent-completed-section';
+            recentSection.innerHTML = `
+                <div class="recent-completed-header">
+                    <h4><i class="fas fa-check-circle"></i> Derniers matchs confirmés</h4>
+                </div>
+                <div class="recent-completed-list">
+                    ${recentCompleted.map(match => {
+                        const predictionsCount = appData.predictions.filter(p => p.matchId === match.id).length;
+                        const pointsAwarded = appData.predictions
+                            .filter(p => p.matchId === match.id)
+                            .reduce((total, p) => total + p.points, 0);
+                        
+                        return `
+                            <div class="recent-completed-match">
+                                <div class="completed-match-info">
+                                    <div class="completed-teams">
+                                        <span class="team-flag">${getTeamFlag(match.homeTeam)}</span>
+                                        <span class="team-name">${match.homeTeam}</span>
+                                        <span class="final-score-small">${match.homeScore}</span>
+                                        <span class="vs-small">-</span>
+                                        <span class="final-score-small">${match.awayScore}</span>
+                                        <span class="team-name">${match.awayTeam}</span>
+                                        <span class="team-flag">${getTeamFlag(match.awayTeam)}</span>
+                                    </div>
+                                    <div class="completed-stats">
+                                        <span class="prediction-stat">
+                                            <i class="fas fa-users"></i>
+                                            ${predictionsCount} pronostic${predictionsCount !== 1 ? 's' : ''}
+                                        </span>
+                                        <span class="points-stat">
+                                            <i class="fas fa-trophy"></i>
+                                            ${pointsAwarded} points distribués
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+                        `;
+                    }).join('')}
+                </div>
+            `;
+            parentContainer.appendChild(recentSection);
+        }
     }
 
     loadAdminValues() {
@@ -842,6 +1259,32 @@ class UIManager {
         return 'draw';
     }
 
+    getPredictionAccuracyText(prediction, match) {
+        // Score exact
+        if (prediction.homeScore === match.homeScore && prediction.awayScore === match.awayScore) {
+            return '🎯 Score exact !';
+        }
+        
+        const predictedResult = this.getMatchResult(prediction.homeScore, prediction.awayScore);
+        const actualResult = this.getMatchResult(match.homeScore, match.awayScore);
+        
+        // Bon résultat
+        if (predictedResult === actualResult) {
+            const resultText = actualResult === 'home' ? 'victoire domicile' : 
+                              actualResult === 'away' ? 'victoire extérieur' : 'match nul';
+            return `✅ Bon résultat (${resultText})`;
+        }
+        
+        // Bonne différence de buts
+        const predictedDiff = Math.abs(prediction.homeScore - prediction.awayScore);
+        const actualDiff = Math.abs(match.homeScore - match.awayScore);
+        if (predictedDiff === actualDiff) {
+            return `📊 Bonne différence de buts (${actualDiff})`;
+        }
+        
+        return '';
+    }
+
     savePointsConfiguration() {
         const exactScore = parseInt(document.getElementById('exactScorePoints').value);
         const correctResult = parseInt(document.getElementById('correctResultPoints').value);
@@ -904,9 +1347,20 @@ let uiManager;
 
 document.addEventListener('DOMContentLoaded', () => {
     console.log('🚀 Démarrage de l\'application...');
+    console.log('📦 Version: 2.0 - Correction uiManager global');
     
     // Créer l'instance UIManager
     uiManager = new UIManager();
+    
+    // Rendre uiManager accessible globalement
+    window.uiManager = uiManager;
+    console.log('✅ uiManager rendu global:', !!window.uiManager);
+    
+    // S'assurer que le header est correctement initialisé
+    setTimeout(() => {
+        console.log('🔄 Initialisation finale du header');
+        uiManager.updateHeader();
+    }, 200);
     
     // Vérifier si c'est la première visite
     if (!localStorage.getItem('currentUser')) {
@@ -923,6 +1377,24 @@ document.addEventListener('DOMContentLoaded', () => {
         appData.currentUser.lastActivity = new Date().toISOString();
         appData.saveUser();
     }
+    
+    // Test pour vérifier que les nouvelles fonctionnalités sont chargées
+    setTimeout(() => {
+        const userNameElement = document.getElementById('userName');
+        if (userNameElement && userNameElement.onclick) {
+            console.log('✅ Pseudonyme cliquable activé');
+        } else {
+            console.warn('⚠️ Problème avec le pseudonyme cliquable');
+        }
+        
+        // Test des drapeaux
+        const testFlag = getTeamFlag('France');
+        if (testFlag === '🇫🇷') {
+            console.log('✅ Système de drapeaux actif');
+        } else {
+            console.warn('⚠️ Problème avec les drapeaux');
+        }
+    }, 1000);
 });
 
 // Service Worker pour PWA
