@@ -1,0 +1,28 @@
+<!-- Générer des icônes SVG simples pour la PWA -->
+<svg xmlns="http://www.w3.org/2000/svg" width="192" height="192" viewBox="0 0 192 192">
+  <defs>
+    <linearGradient id="grad1" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#2563eb;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#3b82f6;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+  
+  <!-- Arrière-plan -->
+  <rect width="192" height="192" rx="32" fill="url(#grad1)"/>
+  
+  <!-- Ballon de football -->
+  <circle cx="96" cy="96" r="60" fill="#ffffff" stroke="#1d4ed8" stroke-width="3"/>
+  
+  <!-- Motif du ballon -->
+  <path d="M96 36 L120 60 L120 90 L96 114 L72 90 L72 60 Z" fill="#1d4ed8"/>
+  <path d="M96 78 L108 66 L108 84 L96 96 L84 84 L84 66 Z" fill="#ffffff"/>
+  <path d="M66 72 L54 84 L66 96 L78 84 Z" fill="#1d4ed8"/>
+  <path d="M126 72 L138 84 L126 96 L114 84 Z" fill="#1d4ed8"/>
+  <path d="M78 108 L66 96 L78 84 L90 96 Z" fill="#1d4ed8"/>
+  <path d="M114 108 L126 96 L114 84 L102 96 Z" fill="#1d4ed8"/>
+  
+  <!-- Trophée en bas -->
+  <path d="M76 140 L116 140 L112 152 L80 152 Z" fill="#fbbf24"/>
+  <rect x="88" y="152" width="16" height="8" fill="#fbbf24"/>
+  <rect x="84" y="160" width="24" height="4" fill="#fbbf24"/>
+</svg>

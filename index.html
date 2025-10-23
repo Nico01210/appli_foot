@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pronostics Football</title>
+    <meta name="description" content="Application de pronostics pour la Coupe du Monde et la Ligue 1">
+    <meta name="theme-color" content="#2563eb">
+    
+    <!-- PWA -->
+    <link rel="manifest" href="manifest.json">
+    <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
+    <link rel="apple-touch-icon" href="icon-192.png">
+    
+    <!-- CSS -->
+    <link rel="stylesheet" href="styles.css">
+    
+    <!-- Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+</head>
+<body>
+    <!-- Header -->
+    <header class="header">
+        <div class="container">
+            <div class="header-content">
+                <h1 class="logo">
+                    <i class="fas fa-futbol"></i>
+                    Pronostics Football
+                </h1>
+                <div class="user-info">
+                    <span class="user-name" id="userName" onclick="changeUserName()" title="Cliquer pour modifier">Utilisateur</span>
+                    <div class="user-score">
+                        <i class="fas fa-trophy"></i>
+                        <span id="userPoints">0</span> pts
+                    </div>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Navigation -->
+    <nav class="nav-tabs">
+        <div class="container">
+            <div class="nav-container">
+                <button class="nav-tab active" data-tab="dashboard">
+                    <i class="fas fa-chart-line"></i>
+                    <span>Dashboard</span>
+                </button>
+                <button class="nav-tab" data-tab="predictions">
+                    <i class="fas fa-soccer-ball"></i>
+                    <span>Pronostics</span>
+                </button>
+                <button class="nav-tab" data-tab="leaderboard">
+                    <i class="fas fa-medal"></i>
+                    <span>Classement</span>
+                </button>
+                <button class="nav-tab" data-tab="admin">
+                    <i class="fas fa-cog"></i>
+                    <span>Admin</span>
+                </button>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="main">
+        <div class="container">
+            <!-- Dashboard Tab -->
+            <div class="tab-content active" id="dashboard">
+                <div class="dashboard-header">
+                    <h2>Mon Dashboard</h2>
+                    <div class="tournament-selector">
+                        <select id="tournamentSelect">
+                            <option value="worldcup">Coupe du Monde 2026</option>
+                            <option value="ligue1">Ligue 1 2024-25</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-icon">
+                            <i class="fas fa-bullseye"></i>
+                        </div>
+                        <div class="stat-content">
+                            <h3 id="totalPredictions">0</h3>
+                            <p>Pronostics</p>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon">
+                            <i class="fas fa-check-circle"></i>
+                        </div>
+                        <div class="stat-content">
+                            <h3 id="correctPredictions">0</h3>
+                            <p>Corrects</p>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon">
+                            <i class="fas fa-percentage"></i>
+                        </div>
+                        <div class="stat-content">
+                            <h3 id="accuracy">0%</h3>
+                            <p>Précision</p>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon">
+                            <i class="fas fa-ranking-star"></i>
+                        </div>
+                        <div class="stat-content">
+                            <h3 id="userRank">-</h3>
+                            <p>Classement</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="recent-predictions">
+                    <h3>Derniers Pronostics</h3>
+                    <div id="recentPredictionsList" class="predictions-list">
+                        <!-- Généré dynamiquement -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- Predictions Tab -->
+            <div class="tab-content" id="predictions">
+                <div class="predictions-header">
+                    <h2>Pronostics</h2>
+                    <div class="filter-section">
+                        <select id="matchFilter">
+                            <option value="upcoming">À venir</option>
+                            <option value="completed">Terminés</option>
+                            <option value="all">Tous</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div id="matchesList" class="matches-list">
+                    <!-- Généré dynamiquement -->
+                </div>
+            </div>
+
+            <!-- Leaderboard Tab -->
+            <div class="tab-content" id="leaderboard">
+                <div class="leaderboard-header">
+                    <h2>Classement</h2>
+                    <div class="period-selector">
+                        <button class="period-btn active" data-period="overall">Général</button>
+                        <button class="period-btn" data-period="month">Ce mois</button>
+                        <button class="period-btn" data-period="week">Cette semaine</button>
+                    </div>
+                </div>
+
+                <div id="leaderboardList" class="leaderboard-list">
+                    <!-- Généré dynamiquement -->
+                </div>
+            </div>
+
+            <!-- Admin Tab -->
+            <div class="tab-content" id="admin">
+                <div class="admin-header">
+                    <h2>Administration</h2>
+                    <p class="admin-description">Gérez les tournois, matchs et système de points</p>
+                </div>
+
+                <div class="admin-sections">
+                    <div class="admin-section">
+                        <h3>Profil Utilisateur</h3>
+                        <div class="profile-management">
+                            <div class="profile-item">
+                                <label for="userNameInput">Pseudonyme :</label>
+                                <div style="display: flex; gap: 1rem; align-items: center; flex-wrap: wrap;">
+                                    <input type="text" id="userNameInput" placeholder="Votre pseudonyme" maxlength="20" style="flex: 1; min-width: 200px;">
+                                    <button id="saveUserName" class="btn btn-primary">
+                                        <i class="fas fa-save"></i>
+                                        Modifier
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="profile-stats">
+                                <p><strong>Membre depuis :</strong> <span id="memberSince"></span></p>
+                                <p><strong>Dernière activité :</strong> <span id="lastActivity"></span></p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="admin-section">
+                        <h3>Système de Points</h3>
+                        <div class="points-config">
+                            <div class="config-item">
+                                <label for="exactScorePoints">Score exact :</label>
+                                <input type="number" id="exactScorePoints" value="5">
+                                <span>points</span>
+                            </div>
+                            <div class="config-item">
+                                <label for="correctResultPoints">Bon résultat :</label>
+                                <input type="number" id="correctResultPoints" value="3">
+                                <span>points</span>
+                            </div>
+                            <div class="config-item">
+                                <label for="goalDifferencePoints">Écart de buts :</label>
+                                <input type="number" id="goalDifferencePoints" value="2">
+                                <span>points</span>
+                            </div>
+                        </div>
+                        <button id="savePointsConfig" class="btn btn-primary">
+                            <i class="fas fa-save"></i>
+                            Sauvegarder
+                        </button>
+                    </div>
+
+                    <div class="admin-section">
+                        <h3>Gestion des Matchs</h3>
+                        <div class="match-management">
+                            <div class="add-match-form">
+                                <h4>Ajouter un Match</h4>
+                                <form id="addMatchForm">
+                                    <div class="form-row">
+                                        <input type="text" id="homeTeam" placeholder="Équipe domicile" required>
+                                        <input type="text" id="awayTeam" placeholder="Équipe extérieur" required>
+                                    </div>
+                                    <div class="form-row">
+                                        <input type="datetime-local" id="matchDate" required>
+                                        <select id="matchTournament" required>
+                                            <option value="worldcup">Coupe du Monde</option>
+                                            <option value="ligue1">Ligue 1</option>
+                                        </select>
+                                    </div>
+                                    <button type="submit" class="btn btn-secondary">
+                                        <i class="fas fa-plus"></i>
+                                        Ajouter Match
+                                    </button>
+                                </form>
+                            </div>
+
+                            <div class="update-results">
+                                <h4>Mettre à jour les Résultats</h4>
+                                <div id="pendingMatches" class="pending-matches">
+                                    <!-- Généré dynamiquement -->
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="admin-section">
+                        <h3>Statistiques</h3>
+                        <div class="admin-stats">
+                            <div class="admin-stat">
+                                <span class="stat-label">Total utilisateurs :</span>
+                                <span id="totalUsers">0</span>
+                            </div>
+                            <div class="admin-stat">
+                                <span class="stat-label">Total pronostics :</span>
+                                <span id="totalPredictionsAdmin">0</span>
+                            </div>
+                            <div class="admin-stat">
+                                <span class="stat-label">Matchs actifs :</span>
+                                <span id="activeMatches">0</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Modal pour les pronostics -->
+    <div id="predictionModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Faire un Pronostic</h3>
+                <button class="modal-close" id="closePredictionModal">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="match-info">
+                    <div class="teams">
+                        <span id="modalHomeTeam"></span>
+                        <span class="vs">VS</span>
+                        <span id="modalAwayTeam"></span>
+                    </div>
+                    <div class="match-date" id="modalMatchDate"></div>
+                </div>
+                <div class="prediction-form">
+                    <div class="score-inputs">
+                        <div class="score-input">
+                            <label for="homeScore">Score domicile</label>
+                            <input type="number" id="homeScore" min="0" max="20" value="0">
+                        </div>
+                        <div class="score-separator">-</div>
+                        <div class="score-input">
+                            <label for="awayScore">Score extérieur</label>
+                            <input type="number" id="awayScore" min="0" max="20" value="0">
+                        </div>
+                    </div>
+                    <button id="submitPrediction" class="btn btn-primary">
+                        <i class="fas fa-check"></i>
+                        Confirmer le Pronostic
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast notifications -->
+    <div id="toastContainer" class="toast-container"></div>
+
+    <!-- JavaScript -->
+    <script src="app.js"></script>
+</body>
+</html>
