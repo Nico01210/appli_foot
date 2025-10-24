@@ -427,8 +427,10 @@ class UIManager {
     constructor() {
         this.currentTab = 'dashboard';
         this.isChangingUserName = false; // Flag pour éviter les conflits
+        this.countdownUpdateInterval = null; // Pour mettre à jour les décomptes périodiquement
         this.initializeEventListeners();
         this.updateUI();
+        this.startCountdownUpdates(); // Démarrer la mise à jour périodique des décomptes
     }
 
     initializeEventListeners() {
@@ -776,7 +778,10 @@ class UIManager {
             matchCard.innerHTML = `
                 <div class="match-header">
                     <span class="match-tournament">${CONFIG.tournaments[match.tournament]}</span>
-                    <span class="match-date">${this.formatDate(match.date)}</span>
+                    <div class="match-info-row">
+                        <span class="match-date">${this.formatDate(match.date)}</span>
+                        ${isUpcoming && canPredict ? `<span class="match-countdown" style="font-size: 0.85rem; color: var(--primary-color); font-weight: 600;">Pronostiquer avant: ${this.formatTimeRemaining(match.date)}</span>` : ''}
+                    </div>
                     ${match.status === 'completed' ? '<span class="match-status completed"><i class="fas fa-check"></i> Terminé</span>' : ''}
                 </div>
                 <div class="match-body">
@@ -1086,6 +1091,12 @@ class UIManager {
         const match = appData.matches.find(m => m.id === matchId);
         if (!match) return;
 
+        // Vérifier que le match n'a pas commencé
+        if (new Date(match.date) <= new Date()) {
+            this.showToast('Ce match a déjà commencé, les pronostics ne sont plus acceptés', 'error');
+            return;
+        }
+
         const existingPrediction = appData.predictions.find(p => 
             p.matchId === matchId && p.userId === appData.currentUser.id
         );
@@ -1094,6 +1105,28 @@ class UIManager {
         document.getElementById('modalHomeTeam').textContent = match.homeTeam;
         document.getElementById('modalAwayTeam').textContent = match.awayTeam;
         document.getElementById('modalMatchDate').textContent = this.formatDate(match.date);
+        
+        // Afficher le décompte
+        const countdownElement = document.getElementById('modalCountdown');
+        if (countdownElement) {
+            countdownElement.textContent = `Temps restant: ${this.formatTimeRemaining(match.date)}`;
+            
+            // Mettre à jour le décompte toutes les secondes
+            const countdownInterval = setInterval(() => {
+                const timeRemaining = this.formatTimeRemaining(match.date);
+                countdownElement.textContent = `Temps restant: ${timeRemaining}`;
+                
+                // Arrêter si le match a commencé
+                if (timeRemaining === 'Match commencé') {
+                    clearInterval(countdownInterval);
+                    document.getElementById('closeModal').click(); // Fermer le modal
+                    this.showToast('Ce match a commencé, les pronostics sont fermés', 'warning');
+                }
+            }, 1000);
+            
+            // Stocker l'intervalle pour le nettoyer si on ferme le modal
+            document.getElementById('predictionModal').countdownInterval = countdownInterval;
+        }
 
         // Pré-remplir avec la prédiction existante
         if (existingPrediction) {
@@ -1112,7 +1145,13 @@ class UIManager {
     }
 
     closeModal() {
-        document.getElementById('predictionModal').classList.remove('active');
+        // Nettoyer l'intervalle de décompte s'il existe
+        const modal = document.getElementById('predictionModal');
+        if (modal.countdownInterval) {
+            clearInterval(modal.countdownInterval);
+            modal.countdownInterval = null;
+        }
+        modal.classList.remove('active');
     }
 
     submitPrediction() {
@@ -1333,6 +1372,90 @@ class UIManager {
             hour: '2-digit',
             minute: '2-digit'
         });
+    }
+
+    // Formater le temps restant avant un match (pour le décompte)
+    formatTimeRemaining(matchDateString) {
+        const now = new Date();
+        const matchDate = new Date(matchDateString);
+        const diffMs = matchDate - now;
+
+        if (diffMs <= 0) {
+            return 'Match commencé';
+        }
+
+        const diffSeconds = Math.floor(diffMs / 1000);
+        const diffMinutes = Math.floor(diffSeconds / 60);
+        const diffHours = Math.floor(diffMinutes / 60);
+        const diffDays = Math.floor(diffHours / 24);
+
+        if (diffDays > 0) {
+            return `${diffDays}j ${diffHours % 24}h`;
+        } else if (diffHours > 0) {
+            return `${diffHours}h ${diffMinutes % 60}m`;
+        } else if (diffMinutes > 0) {
+            return `${diffMinutes}m ${diffSeconds % 60}s`;
+        } else {
+            return `${diffSeconds}s`;
+        }
+    }
+
+    // Démarrer la mise à jour périodique des décomptes dans les cartes de matchs
+    startCountdownUpdates() {
+        if (this.countdownUpdateInterval) {
+            clearInterval(this.countdownUpdateInterval);
+        }
+
+        this.countdownUpdateInterval = setInterval(() => {
+            this.updateCountdownsInCards();
+        }, 1000); // Mettre à jour chaque seconde
+    }
+
+    // Mettre à jour les décomptes affichés dans les cartes de matchs
+    updateCountdownsInCards() {
+        // Chercher tous les éléments de décompte dans les cartes
+        const countdownElements = document.querySelectorAll('.match-countdown');
+        
+        countdownElements.forEach(element => {
+            // Récupérer l'ID du match depuis l'attribut data
+            const matchCard = element.closest('.match-card');
+            if (!matchCard) return;
+
+            // Trouver le match correspondant
+            let matchId = null;
+            const matchButton = matchCard.querySelector('[onclick*="openPredictionModal"]');
+            if (matchButton) {
+                const onclickStr = matchButton.getAttribute('onclick');
+                const match = onclickStr.match(/openPredictionModal\('([^']+)'\)/);
+                if (match) matchId = match[1];
+            }
+
+            if (!matchId) return;
+
+            const currentMatch = appData.matches.find(m => m.id === matchId);
+            if (!currentMatch) return;
+
+            // Vérifier si le match est toujours à venir et peut recevoir des pronostics
+            const isUpcoming = currentMatch.status === 'upcoming';
+            const canPredict = isUpcoming && new Date(currentMatch.date) > new Date();
+
+            if (isUpcoming && canPredict) {
+                // Mettre à jour le texte du décompte
+                element.textContent = `Pronostiquer avant: ${this.formatTimeRemaining(currentMatch.date)}`;
+            } else if (isUpcoming && !canPredict) {
+                // Le match a commencé
+                element.textContent = 'Match commencé';
+                element.style.color = 'var(--error-color)'; // Couleur rouge
+            }
+        });
+    }
+
+    // Arrêter la mise à jour périodique des décomptes
+    stopCountdownUpdates() {
+        if (this.countdownUpdateInterval) {
+            clearInterval(this.countdownUpdateInterval);
+            this.countdownUpdateInterval = null;
+        }
     }
 
     showToast(message, type = 'success') {
