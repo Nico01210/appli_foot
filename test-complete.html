@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Complet - Pronostics Football</title>
+    <link rel="stylesheet" href="styles.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <style>
+        .test-banner {
+            background: #1e40af;
+            color: white;
+            padding: 0.5rem;
+            text-align: center;
+            font-size: 0.875rem;
+        }
+        .test-controls {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: #000;
+            color: #fff;
+            padding: 1rem;
+            border-radius: 8px;
+            z-index: 9999;
+        }
+        .test-controls button {
+            margin: 0.25rem;
+            padding: 0.5rem 1rem;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        .clear-btn { background: #ef4444; color: white; }
+        .reload-btn { background: #10b981; color: white; }
+    </style>
+</head>
+<body>
+    <div class="test-banner">
+        🧪 MODE TEST - Version avec boutons de connexion/déconnexion dans le header
+    </div>
+
+    <!-- Header avec boutons auth -->
+    <header class="header">
+        <div class="container">
+            <div class="header-content">
+                <h1 class="logo">
+                    <i class="fas fa-futbol"></i>
+                    Pronostics Football
+                </h1>
+                <div class="user-info">
+                    <!-- Affiché quand l'utilisateur est connecté -->
+                    <div id="authenticated-user" style="display: none;">
+                        <span class="user-name" id="userName" onclick="changeUserName()" title="Cliquer pour modifier votre pseudonyme">Joueur</span>
+                        <div class="user-score">
+                            <i class="fas fa-trophy"></i>
+                            <span id="userPoints">0</span> pts
+                        </div>
+                        <button id="logoutBtn" class="btn btn-logout" title="Se déconnecter">
+                            <i class="fas fa-sign-out-alt"></i>
+                        </button>
+                    </div>
+                    
+                    <!-- Affiché quand l'utilisateur n'est pas connecté -->
+                    <div id="guest-user" style="display: block;">
+                        <button id="loginHeaderBtn" class="btn btn-primary">
+                            <i class="fas fa-sign-in-alt"></i>
+                            Se connecter
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Section d'authentification -->
+    <section id="auth" class="content-section">
+        <div class="container">
+            <div class="auth-container">
+                <div class="auth-header">
+                    <h1>🏆 Pronostics Football</h1>
+                    <p>Connectez-vous pour commencer à jouer</p>
+                </div>
+                
+                <div class="auth-form">
+                    <div class="input-group">
+                        <label for="authUserName">Votre pseudonyme</label>
+                        <input type="text" id="authUserName" placeholder="Entrez votre pseudonyme" maxlength="20" required>
+                    </div>
+                    
+                    <div class="input-group">
+                        <label for="authEmail">Email (optionnel)</label>
+                        <input type="email" id="authEmail" placeholder="votre@email.com">
+                        <small>L'email permet de retrouver votre compte sur d'autres appareils</small>
+                    </div>
+                    
+                    <button id="loginBtn" class="btn btn-primary btn-large">
+                        <i class="fas fa-sign-in-alt"></i>
+                        Se connecter
+                    </button>
+                </div>
+                
+                <div class="auth-info">
+                    <h3>🎮 Comment jouer ?</h3>
+                    <ul>
+                        <li>🎯 Pronostiquez les scores des matchs</li>
+                        <li>🏆 Gagnez des points selon vos prédictions</li>
+                        <li>📊 Suivez votre classement en temps réel</li>
+                        <li>👥 Défiez vos amis et collègues</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Contenu principal -->
+    <main class="main" style="display: none;">
+        <div class="container">
+            <h2>🎉 Bienvenue dans l'application !</h2>
+            <p>Vous êtes maintenant connecté. L'application complète s'afficherait ici.</p>
+            
+            <div style="background: #f3f4f6; padding: 2rem; border-radius: 8px; margin: 2rem 0;">
+                <h3>✅ Fonctionnalités testées :</h3>
+                <ul>
+                    <li>✅ Bouton "Se connecter" dans le header (quand déconnecté)</li>
+                    <li>✅ Interface d'authentification</li>
+                    <li>✅ Connexion avec pseudonyme et email optionnel</li>
+                    <li>✅ Affichage des infos utilisateur après connexion</li>
+                    <li>✅ Bouton de déconnexion</li>
+                    <li>✅ Persistance du token dans localStorage</li>
+                </ul>
+            </div>
+        </div>
+    </main>
+
+    <!-- Contrôles de test -->
+    <div class="test-controls">
+        <div><strong>Contrôles de test :</strong></div>
+        <button class="clear-btn" onclick="clearStorage()">Vider localStorage</button>
+        <button class="reload-btn" onclick="location.reload()">Recharger</button>
+        <div style="margin-top: 0.5rem; font-size: 0.75rem;">
+            Token: <span id="tokenStatus">-</span>
+        </div>
+    </div>
+
+    <script src="api-client.js"></script>
+    <script>
+        // Configuration
+        const apiClient = new APIClient();
+        
+        // État de l'application
+        let isAuthenticated = false;
+        let currentUser = null;
+        
+        // Contrôles de test
+        function clearStorage() {
+            localStorage.clear();
+            location.reload();
+        }
+        
+        function updateTokenStatus() {
+            const token = localStorage.getItem('auth_token');
+            document.getElementById('tokenStatus').textContent = token ? 'Présent' : 'Absent';
+        }
+        
+        // Gestion de l'affichage
+        function showAuth() {
+            document.getElementById('auth').style.display = 'block';
+            document.querySelector('.main').style.display = 'none';
+            updateHeader();
+        }
+        
+        function showMainApp() {
+            document.getElementById('auth').style.display = 'none';
+            document.querySelector('.main').style.display = 'block';
+            updateHeader();
+        }
+        
+        function updateHeader() {
+            const authenticatedUser = document.getElementById('authenticated-user');
+            const guestUser = document.getElementById('guest-user');
+            
+            if (isAuthenticated && currentUser) {
+                authenticatedUser.style.display = 'flex';
+                guestUser.style.display = 'none';
+                
+                document.getElementById('userName').textContent = currentUser.name;
+                document.getElementById('userPoints').textContent = currentUser.points;
+            } else {
+                authenticatedUser.style.display = 'none';
+                guestUser.style.display = 'block';
+            }
+            
+            updateTokenStatus();
+        }
+        
+        // Authentification
+        async function login() {
+            const userName = document.getElementById('authUserName').value.trim();
+            const email = document.getElementById('authEmail').value.trim();
+            
+            if (!userName) {
+                alert('Veuillez entrer un pseudonyme');
+                return;
+            }
+            
+            try {
+                const btn = document.getElementById('loginBtn');
+                btn.disabled = true;
+                btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Connexion...';
+                
+                const response = await apiClient.login(userName, email);
+                
+                // Sauvegarder l'état
+                localStorage.setItem('auth_token', response.token);
+                apiClient.token = response.token;
+                isAuthenticated = true;
+                currentUser = response.user;
+                
+                showMainApp();
+                
+            } catch (error) {
+                alert('Erreur de connexion: ' + error.message);
+            } finally {
+                const btn = document.getElementById('loginBtn');
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fas fa-sign-in-alt"></i> Se connecter';
+            }
+        }
+        
+        function logout() {
+            localStorage.removeItem('auth_token');
+            apiClient.token = null;
+            isAuthenticated = false;
+            currentUser = null;
+            
+            showAuth();
+        }
+        
+        // Initialisation
+        document.addEventListener('DOMContentLoaded', async () => {
+            // Événements
+            document.getElementById('loginBtn').addEventListener('click', login);
+            document.getElementById('loginHeaderBtn').addEventListener('click', showAuth);
+            document.getElementById('logoutBtn').addEventListener('click', logout);
+            
+            // Vérifier l'authentification
+            const token = localStorage.getItem('auth_token');
+            if (token) {
+                try {
+                    apiClient.token = token;
+                    currentUser = await apiClient.getCurrentUser();
+                    isAuthenticated = true;
+                    showMainApp();
+                } catch (error) {
+                    localStorage.removeItem('auth_token');
+                    showAuth();
+                }
+            } else {
+                showAuth();
+            }
+        });
+    </script>
+</body>
+</html>

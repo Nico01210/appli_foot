@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test input type number</title>
+</head>
+<body>
+    <input type="number" id="test1" min="0" max="20" placeholder="0">
+    <input type="number" id="test2" min="0" max="20" placeholder="0" value="0">
+    
+    <button onclick="test()">Test Values</button>
+    
+    <script>
+        function test() {
+            const input1 = document.getElementById('test1');
+            const input2 = document.getElementById('test2');
+            
+            console.log('Input 1 (empty):', {
+                value: input1.value,
+                valueAsNumber: input1.valueAsNumber,
+                parseInt: parseInt(input1.value),
+                isNaN: isNaN(parseInt(input1.value))
+            });
+            
+            console.log('Input 2 (0):', {
+                value: input2.value,
+                valueAsNumber: input2.valueAsNumber,
+                parseInt: parseInt(input2.value),
+                isNaN: isNaN(parseInt(input2.value))
+            });
+            
+            // Entrez maintenant 0 dans le premier input
+            input1.value = "0";
+            
+            console.log('Input 1 (after entering 0):', {
+                value: input1.value,
+                valueAsNumber: input1.valueAsNumber,
+                parseInt: parseInt(input1.value),
+                isNaN: isNaN(parseInt(input1.value))
+            });
+        }
+    </script>
+</body>
+</html>

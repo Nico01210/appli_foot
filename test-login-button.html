@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Bouton Connexion</title>
+    <link rel="stylesheet" href="styles.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <style>
+        .debug {
+            position: fixed;
+            top: 10px;
+            right: 10px;
+            background: #000;
+            color: #fff;
+            padding: 1rem;
+            border-radius: 8px;
+            z-index: 9999;
+            font-size: 12px;
+            max-width: 300px;
+        }
+    </style>
+</head>
+<body>
+    <div class="debug" id="debug">
+        <div>Status: <span id="status">Initialisation...</span></div>
+        <div>Serveur: <span id="server-status">Checking...</span></div>
+        <div>Click Count: <span id="click-count">0</span></div>
+        <div>Last Action: <span id="last-action">None</span></div>
+    </div>
+
+    <!-- Interface d'authentification -->
+    <section id="auth" class="content-section">
+        <div class="container">
+            <div class="auth-container">
+                <div class="auth-header">
+                    <h1>🔧 Test Bouton Connexion</h1>
+                    <p>Test pour identifier le problème de connexion</p>
+                </div>
+                
+                <div class="auth-form">
+                    <div class="input-group">
+                        <label for="authUserName">Votre pseudonyme</label>
+                        <input type="text" id="authUserName" placeholder="TestUser" value="TestUser" maxlength="20" required>
+                    </div>
+                    
+                    <div class="input-group">
+                        <label for="authEmail">Email (optionnel)</label>
+                        <input type="email" id="authEmail" placeholder="test@example.com" value="test@example.com">
+                    </div>
+                    
+                    <button id="loginBtn" class="btn btn-primary btn-large">
+                        <i class="fas fa-sign-in-alt"></i>
+                        Se connecter
+                    </button>
+                    
+                    <button id="testBtn" class="btn btn-secondary btn-large" style="margin-top: 1rem;">
+                        <i class="fas fa-vial"></i>
+                        Test Direct API
+                    </button>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <script src="api-client.js"></script>
+    <script>
+        let clickCount = 0;
+        const apiClient = new APIClient();
+        
+        function updateStatus(message) {
+            document.getElementById('status').textContent = message;
+            console.log('📊 Status:', message);
+        }
+        
+        function updateLastAction(action) {
+            document.getElementById('last-action').textContent = action;
+            console.log('🎯 Action:', action);
+        }
+        
+        function incrementClick() {
+            clickCount++;
+            document.getElementById('click-count').textContent = clickCount;
+        }
+        
+        // Test de connexion API direct
+        async function testDirectAPI() {
+            incrementClick();
+            updateLastAction('Test API Direct');
+            
+            try {
+                updateStatus('Test API en cours...');
+                const userName = document.getElementById('authUserName').value.trim();
+                const email = document.getElementById('authEmail').value.trim();
+                
+                console.log('🧪 Test API direct:', { userName, email });
+                
+                const response = await apiClient.login(userName, email);
+                console.log('✅ Réponse API:', response);
+                
+                updateStatus('API fonctionne !');
+                alert('✅ API fonctionne ! Token: ' + (response.token ? 'Reçu' : 'Absent'));
+                
+            } catch (error) {
+                console.error('❌ Erreur API:', error);
+                updateStatus('Erreur API: ' + error.message);
+                alert('❌ Erreur API: ' + error.message);
+            }
+        }
+        
+        // Test de connexion via UIManager
+        async function testLogin() {
+            incrementClick();
+            updateLastAction('Test Login UIManager');
+            
+            try {
+                updateStatus('Test connexion...');
+                const userName = document.getElementById('authUserName').value.trim();
+                const email = document.getElementById('authEmail').value.trim();
+                
+                if (!userName) {
+                    alert('Veuillez entrer un pseudonyme');
+                    return;
+                }
+                
+                console.log('🔄 Test connexion:', { userName, email });
+                
+                const btn = document.getElementById('loginBtn');
+                btn.disabled = true;
+                btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Connexion...';
+                
+                // Simuler ce que fait l'application
+                const response = await apiClient.login(userName, email);
+                console.log('✅ Connexion réussie:', response);
+                
+                updateStatus('Connexion réussie !');
+                alert('✅ Connexion réussie ! Utilisateur: ' + response.user.name);
+                
+            } catch (error) {
+                console.error('❌ Erreur connexion:', error);
+                updateStatus('Erreur: ' + error.message);
+                alert('❌ Erreur: ' + error.message);
+            } finally {
+                const btn = document.getElementById('loginBtn');
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fas fa-sign-in-alt"></i> Se connecter';
+            }
+        }
+        
+        // Vérifier le serveur
+        async function checkServer() {
+            try {
+                const response = await fetch('http://localhost:3001/api/users');
+                if (response.ok) {
+                    document.getElementById('server-status').textContent = 'OK';
+                    document.getElementById('server-status').style.color = '#10b981';
+                } else {
+                    document.getElementById('server-status').textContent = 'Error ' + response.status;
+                    document.getElementById('server-status').style.color = '#ef4444';
+                }
+            } catch (error) {
+                document.getElementById('server-status').textContent = 'Offline';
+                document.getElementById('server-status').style.color = '#ef4444';
+            }
+        }
+        
+        // Initialisation
+        document.addEventListener('DOMContentLoaded', () => {
+            console.log('🚀 Test page loaded');
+            updateStatus('Page chargée');
+            checkServer();
+            
+            // Ajouter les écouteurs d'événements
+            const loginBtn = document.getElementById('loginBtn');
+            const testBtn = document.getElementById('testBtn');
+            
+            if (loginBtn) {
+                console.log('✅ Bouton loginBtn trouvé');
+                loginBtn.addEventListener('click', (e) => {
+                    console.log('🖱️ Clic détecté sur loginBtn');
+                    e.preventDefault();
+                    testLogin();
+                });
+            } else {
+                console.error('❌ Bouton loginBtn non trouvé');
+            }
+            
+            if (testBtn) {
+                console.log('✅ Bouton testBtn trouvé');
+                testBtn.addEventListener('click', (e) => {
+                    console.log('🖱️ Clic détecté sur testBtn');
+                    e.preventDefault();
+                    testDirectAPI();
+                });
+            }
+            
+            updateStatus('Prêt pour test');
+        });
+    </script>
+</body>
+</html>

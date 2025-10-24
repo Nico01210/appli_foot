@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Minimal Connexion</title>
+    <link rel="stylesheet" href="styles.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+</head>
+<body>
+    <section id="auth" class="content-section">
+        <div class="container">
+            <div class="auth-container">
+                <div class="auth-header">
+                    <h1>🔧 Test Minimal</h1>
+                    <p>Test le plus simple possible</p>
+                </div>
+                
+                <div class="auth-form">
+                    <div class="input-group">
+                        <label for="authUserName">Pseudonyme</label>
+                        <input type="text" id="authUserName" value="TestUser" required>
+                    </div>
+                    
+                    <div class="input-group">
+                        <label for="authEmail">Email (optionnel)</label>
+                        <input type="email" id="authEmail" value="test@example.com">
+                    </div>
+                    
+                    <button id="loginBtn" class="btn btn-primary btn-large">
+                        <i class="fas fa-sign-in-alt"></i>
+                        Se connecter
+                    </button>
+                    
+                    <div style="margin-top: 1rem; font-size: 0.875rem;">
+                        <div>Clicks: <span id="clickCount">0</span></div>
+                        <div>Status: <span id="status">En attente...</span></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <script>
+        console.log('🚀 Page minimale chargée');
+        
+        let clicks = 0;
+        
+        function updateStatus(msg) {
+            document.getElementById('status').textContent = msg;
+            console.log('📊', msg);
+        }
+        
+        function incrementClick() {
+            clicks++;
+            document.getElementById('clickCount').textContent = clicks;
+            console.log('🖱️ Click #' + clicks);
+        }
+        
+        // Attendre que le DOM soit prêt
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('📄 DOM Content Loaded');
+            updateStatus('DOM prêt');
+            
+            const loginBtn = document.getElementById('loginBtn');
+            console.log('🔍 Bouton trouvé:', !!loginBtn);
+            
+            if (loginBtn) {
+                console.log('✅ Ajout écouteur sur bouton');
+                updateStatus('Écouteur ajouté');
+                
+                loginBtn.addEventListener('click', function(e) {
+                    console.log('🖱️ CLICK DÉTECTÉ !');
+                    incrementClick();
+                    updateStatus('Clic détecté !');
+                    
+                    // Test de l'API
+                    testAPI();
+                });
+            } else {
+                console.error('❌ Bouton non trouvé !');
+                updateStatus('Erreur: bouton non trouvé');
+            }
+        });
+        
+        async function testAPI() {
+            try {
+                updateStatus('Test API...');
+                
+                const userName = document.getElementById('authUserName').value;
+                const email = document.getElementById('authEmail').value;
+                
+                console.log('📡 Envoi requête API:', { userName, email });
+                
+                const response = await fetch('http://localhost:3001/api/auth/login', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ name: userName, email: email })
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    console.log('✅ Réponse API:', data);
+                    updateStatus('Connexion réussie !');
+                    alert('✅ Connexion réussie ! Utilisateur: ' + data.user.name);
+                } else {
+                    const error = await response.text();
+                    console.error('❌ Erreur API:', error);
+                    updateStatus('Erreur API: ' + response.status);
+                    alert('❌ Erreur API: ' + error);
+                }
+                
+            } catch (error) {
+                console.error('❌ Erreur réseau:', error);
+                updateStatus('Erreur réseau');
+                alert('❌ Erreur réseau: ' + error.message);
+            }
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Bouton Connexion</title>
+    <link rel="stylesheet" href="styles.css">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+</head>
+<body>
+    <script>
+        // Log immédiat pour confirmer le chargement
+        console.log('[IMMEDIATE] Script loaded');
+        
+        // Test simple du DOM
+        document.addEventListener('DOMContentLoaded', () => {
+            console.log('[DOMContentLoaded] DOM chargé');
+            
+            const loginBtn = document.getElementById('loginHeaderBtn');
+            console.log('[TEST] loginHeaderBtn trouvé:', !!loginBtn);
+            
+            if (loginBtn) {
+                console.log('[TEST] Bouton cliquable:', loginBtn.offsetParent !== null);
+                loginBtn.addEventListener('click', () => {
+                    console.log('[TEST] CLICK EVENT FIRED!!!');
+                    alert('Bouton fonctionnne!');
+                });
+            }
+        });
+    </script>
+    
+    <!-- Header -->
+    <header class="header">
+        <div class="container">
+            <div class="header-content">
+                <h1 class="logo">
+                    <i class="fas fa-futbol"></i>
+                    Pronostics Football
+                </h1>
+                <div class="user-info">
+                    <!-- Affiché quand l'utilisateur est connecté -->
+                    <div id="authenticated-user" style="display: none;">
+                        <span class="user-name" id="userName" onclick="changeUserName()" title="Cliquer pour modifier votre pseudonyme">Joueur</span>
+                        <div class="user-score">
+                            <i class="fas fa-trophy"></i>
+                            <span id="userPoints">0</span> pts
+                        </div>
+                        <button id="logoutBtn" class="btn btn-logout" title="Se déconnecter">
+                            <i class="fas fa-sign-out-alt"></i>
+                        </button>
+                    </div>
+                    
+                    <!-- Affiché quand l'utilisateur n'est pas connecté -->
+                    <div id="guest-user" style="display: block;">
+                        <button id="loginHeaderBtn" class="btn btn-primary">
+                            <i class="fas fa-sign-in-alt"></i>
+                            Se connecter
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <div style="padding: 2rem; text-align: center;">
+        <h1>Test du bouton</h1>
+        <p>Consultez la console (F12) et essayez de cliquer sur "Se connecter" en haut</p>
+    </div>
+</body>
+</html>

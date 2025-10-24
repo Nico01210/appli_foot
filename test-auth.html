@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Authentification</title>
+    <link rel="stylesheet" href="styles.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+</head>
+<body>
+    <!-- Section d'authentification -->
+    <section id="auth" class="content-section">
+        <div class="container">
+            <div class="auth-container">
+                <div class="auth-header">
+                    <h1>🏆 Pronostics Football</h1>
+                    <p>Connectez-vous pour commencer à jouer</p>
+                </div>
+                
+                <div class="auth-form">
+                    <div class="input-group">
+                        <label for="authUserName">Votre pseudonyme</label>
+                        <input type="text" id="authUserName" placeholder="Entrez votre pseudonyme" maxlength="20" required>
+                    </div>
+                    
+                    <div class="input-group">
+                        <label for="authEmail">Email (optionnel)</label>
+                        <input type="email" id="authEmail" placeholder="votre@email.com">
+                        <small>L'email permet de retrouver votre compte sur d'autres appareils</small>
+                    </div>
+                    
+                    <button id="loginBtn" class="btn btn-primary btn-large">
+                        <i class="fas fa-sign-in-alt"></i>
+                        Se connecter
+                    </button>
+                </div>
+                
+                <div class="auth-info">
+                    <h3>🎮 Comment jouer ?</h3>
+                    <ul>
+                        <li>🎯 Pronostiquez les scores des matchs</li>
+                        <li>🏆 Gagnez des points selon vos prédictions</li>
+                        <li>📊 Suivez votre classement en temps réel</li>
+                        <li>👥 Défiez vos amis et collègues</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <script>
+        // Test simple pour l'authentification
+        document.getElementById('loginBtn').addEventListener('click', () => {
+            const userName = document.getElementById('authUserName').value.trim();
+            const email = document.getElementById('authEmail').value.trim();
+            
+            if (!userName) {
+                alert('Veuillez entrer un pseudonyme');
+                return;
+            }
+            
+            console.log('Tentative de connexion:', { userName, email });
+            alert(`Test réussi ! Nom: ${userName}, Email: ${email || 'non fourni'}`);
+        });
+    </script>
+</body>
+</html>

@@ -1117,8 +1117,8 @@ class UIManager {
 
     submitPrediction() {
         const matchId = document.getElementById('predictionModal').dataset.matchId;
-        const homeScore = parseInt(document.getElementById('homeScore').value);
-        const awayScore = parseInt(document.getElementById('awayScore').value);
+        const homeScore = parseInt(document.getElementById('homeScore').value || 0, 10);
+        const awayScore = parseInt(document.getElementById('awayScore').value || 0, 10);
 
         if (isNaN(homeScore) || isNaN(awayScore) || homeScore < 0 || awayScore < 0) {
             this.showToast('Veuillez entrer des scores valides', 'error');
@@ -1187,17 +1187,35 @@ class UIManager {
     }
 
     updateMatchResult(matchId) {
-        const homeScore = parseInt(document.getElementById(`home_${matchId}`).value);
-        const awayScore = parseInt(document.getElementById(`away_${matchId}`).value);
+        const homeScoreInput = document.getElementById(`home_${matchId}`);
+        const awayScoreInput = document.getElementById(`away_${matchId}`);
+        
+        // Utiliser parseInt pour convertir en entier
+        const homeScore = parseInt(homeScoreInput.value || 0, 10);
+        const awayScore = parseInt(awayScoreInput.value || 0, 10);
+        
+        console.log('[DEBUG] updateMatchResult:', {
+            homeScore: homeScore,
+            awayScore: awayScore,
+            homeScoreValid: !isNaN(homeScore) && homeScore >= 0,
+            awayScoreValid: !isNaN(awayScore) && awayScore >= 0
+        });
 
+        // Vérifier que les scores sont valides (nombres entiers positifs ou zéro)
         if (isNaN(homeScore) || isNaN(awayScore) || homeScore < 0 || awayScore < 0) {
-            this.showToast('Veuillez entrer des scores valides', 'error');
+            console.log('[DEBUG] Validation échouée - scores invalides');
+            this.showToast('Veuillez entrer des scores valides (nombres positifs)', 'error');
             return;
         }
 
+        console.log('[DEBUG] Validation réussie - Mise à jour du match');
+        
         // Mettre à jour le match
         const matchIndex = appData.matches.findIndex(m => m.id === matchId);
-        if (matchIndex === -1) return;
+        if (matchIndex === -1) {
+            console.log('[DEBUG] Match non trouvé');
+            return;
+        }
 
         appData.matches[matchIndex].homeScore = homeScore;
         appData.matches[matchIndex].awayScore = awayScore;
@@ -1340,6 +1358,137 @@ class UIManager {
             setTimeout(() => toast.remove(), 300);
         }, 3000);
     }
+
+    // === AUTHENTIFICATION ===
+    showContent(sectionName) {
+        console.log('[DEBUG] showContent appelé avec:', sectionName);
+        
+        if (sectionName === 'auth') {
+            // Afficher la section d'authentification
+            console.log('[DEBUG] Affichage interface authentification');
+            const authSection = document.getElementById('auth');
+            const nav = document.querySelector('nav');
+            const main = document.querySelector('.main');
+            const header = document.querySelector('.header');
+            
+            if (authSection) authSection.style.display = 'block';
+            if (nav) nav.style.display = 'none';
+            if (main) main.style.display = 'none';
+            // Garder le header visible pour naviguer
+            if (header) header.style.display = 'block';
+            
+            // Initialiser les écouteurs d'authentification
+            setTimeout(() => {
+                this.initializeAuthListeners();
+            }, 10);
+        } else {
+            // Afficher l'application principale
+            console.log('[DEBUG] Affichage application principale:', sectionName);
+            const authSection = document.getElementById('auth');
+            const nav = document.querySelector('nav');
+            const main = document.querySelector('.main');
+            const header = document.querySelector('.header');
+            
+            if (authSection) authSection.style.display = 'none';
+            if (nav) nav.style.display = 'block';
+            if (main) main.style.display = 'block';
+            if (header) header.style.display = 'block';
+            
+            // Aller à l'onglet spécifié ou dashboard par défaut
+            this.switchTab(sectionName || 'dashboard');
+        }
+    }
+
+    initializeHeaderListeners() {
+        console.log('[DEBUG] Initialisation des écouteurs header...');
+        
+        // Bouton de connexion dans le header
+        const loginHeaderBtn = document.getElementById('loginHeaderBtn');
+        console.log('[DEBUG] loginHeaderBtn trouvé:', !!loginHeaderBtn);
+        
+        if (loginHeaderBtn && !loginHeaderBtn.hasAttribute('data-listener-attached')) {
+            loginHeaderBtn.addEventListener('click', (e) => {
+                console.log('[DEBUG] Clic sur loginHeaderBtn');
+                e.preventDefault();
+                e.stopPropagation();
+                this.showContent('auth');
+            });
+            loginHeaderBtn.setAttribute('data-listener-attached', 'true');
+            console.log('[DEBUG] Écouteur ajouté sur loginHeaderBtn');
+        }
+        
+        // Bouton de déconnexion
+        const logoutBtn = document.getElementById('logoutBtn');
+        if (logoutBtn && !logoutBtn.hasAttribute('data-listener-attached')) {
+            logoutBtn.addEventListener('click', (e) => {
+                console.log('[DEBUG] Clic sur logoutBtn');
+                e.preventDefault();
+                // Nettoyer les données si nécessaire
+                this.showContent('auth');
+            });
+            logoutBtn.setAttribute('data-listener-attached', 'true');
+        }
+    }
+
+    initializeAuthListeners() {
+        console.log('[DEBUG] Initialisation des écouteurs d\'authentification...');
+        const loginBtn = document.getElementById('loginBtn');
+        const userNameInput = document.getElementById('authUserName');
+        const emailInput = document.getElementById('authEmail');
+
+        console.log('[DEBUG] Elements trouvés - loginBtn:', !!loginBtn, 'userNameInput:', !!userNameInput, 'emailInput:', !!emailInput);
+
+        if (loginBtn && !loginBtn.hasAttribute('data-listener-attached')) {
+            loginBtn.setAttribute('data-listener-attached', 'true');
+            loginBtn.addEventListener('click', async (e) => {
+                console.log('[DEBUG] Clic détecté sur bouton login');
+                e.preventDefault();
+                
+                const username = userNameInput ? userNameInput.value.trim() : '';
+                const email = emailInput ? emailInput.value.trim() : '';
+                
+                if (!username) {
+                    this.showToast('Veuillez entrer un pseudonyme', 'error');
+                    return;
+                }
+                
+                console.log('[DEBUG] Tentative de connexion avec:', username);
+                
+                try {
+                    // Sauvegarder l'utilisateur en local pour l'instant
+                    appData.currentUser.name = username;
+                    appData.currentUser.email = email;
+                    appData.currentUser.lastActivity = new Date().toISOString();
+                    appData.saveUser();
+                    
+                    this.updateHeader();
+                    this.showContent('dashboard');
+                    this.showToast(`Bienvenue ${username} !`, 'success');
+                    
+                    console.log('[DEBUG] Connexion réussie');
+                } catch (error) {
+                    console.error('[DEBUG] Erreur de connexion:', error);
+                    this.showToast('Erreur de connexion', 'error');
+                }
+            });
+        }
+    }
+
+    updateHeaderAuth() {
+        console.log('[DEBUG] Mise à jour affichage authentification');
+        const authenticatedUser = document.getElementById('authenticated-user');
+        const guestUser = document.getElementById('guest-user');
+        
+        if (authenticatedUser && guestUser) {
+            if (appData.currentUser && appData.currentUser.name) {
+                authenticatedUser.style.display = 'flex';
+                guestUser.style.display = 'none';
+            } else {
+                authenticatedUser.style.display = 'none';
+                guestUser.style.display = 'block';
+            }
+        }
+    }
 }
 
 // Initialisation de l'application
@@ -1355,6 +1504,14 @@ document.addEventListener('DOMContentLoaded', () => {
     // Rendre uiManager accessible globalement
     window.uiManager = uiManager;
     console.log('✅ uiManager rendu global:', !!window.uiManager);
+    
+    // Initialiser les écouteurs du header immédiatement
+    console.log('[DEBUG] Appel initializeHeaderListeners...');
+    uiManager.initializeHeaderListeners();
+    
+    // Mettre à jour l'affichage d'authentification
+    console.log('[DEBUG] Appel updateHeaderAuth...');
+    uiManager.updateHeaderAuth();
     
     // S'assurer que le header est correctement initialisé
     setTimeout(() => {
