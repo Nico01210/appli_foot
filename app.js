@@ -156,7 +156,6 @@ const CONFIG = {
     pointsSystem: {
         exactScore: 5,
         correctResult: 3,
-        goalDifference: 2,
         winnerRegular: 1 // Pour vainqueur après temps réglementaire en phase finale
     },
     tournaments: {
@@ -1295,14 +1294,12 @@ class UIManager {
         const matchPredictions = appData.predictions.filter(p => p.matchId === matchId);
         const match = appData.matches.find(m => m.id === matchId);
         const actualResult = this.getMatchResult(actualHomeScore, actualAwayScore);
-        const actualDifference = Math.abs(actualHomeScore - actualAwayScore);
         
         // Vérifier si c'est un tournoi de phase finale
         const isFinalPhase = CONFIG.finalPhasesTournaments.includes(match.tournament);
 
         matchPredictions.forEach(prediction => {
             const predictedResult = this.getMatchResult(prediction.homeScore, prediction.awayScore);
-            const predictedDifference = Math.abs(prediction.homeScore - prediction.awayScore);
             
             let points = 0;
 
@@ -1317,10 +1314,6 @@ class UIManager {
             // Pour les phases finales : vainqueur après temps réglementaire
             else if (isFinalPhase && predictedResult === actualResult && actualResult !== 'nul') {
                 points = appData.pointsConfig.winnerRegular || 1;
-            }
-            // Bonne différence de buts (seulement pour les matchs non-phases finales)
-            else if (!isFinalPhase && predictedDifference === actualDifference) {
-                points = appData.pointsConfig.goalDifference;
             }
 
             prediction.points = points;
