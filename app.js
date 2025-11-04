@@ -569,6 +569,9 @@ class UIManager {
             case 'leaderboard':
                 this.renderLeaderboard();
                 break;
+            case 'rules':
+                // Onglet statique, pas de rendu nécessaire
+                break;
             case 'admin':
                 this.renderAdmin();
                 break;
