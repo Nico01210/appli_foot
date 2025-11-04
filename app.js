@@ -839,6 +839,11 @@ class UIManager {
                                 <i class="fas fa-${userPrediction ? 'edit' : 'plus'}"></i>
                                 ${userPrediction ? 'Modifier' : 'Pronostiquer'}
                             </button>
+                        ` : userPrediction && match.status === 'upcoming' ? `
+                            <span class="btn btn-outline disabled">
+                                <i class="fas fa-lock"></i>
+                                Pronostic verrouillé
+                            </span>
                         ` : ''}
                         
                         ${match.status === 'completed' && !userPrediction ? `
@@ -848,7 +853,7 @@ class UIManager {
                             </span>
                         ` : ''}
                         
-                        ${match.status === 'upcoming' && new Date(match.date) <= new Date() ? `
+                        ${match.status === 'upcoming' && new Date(match.date) <= new Date() && !userPrediction ? `
                             <span class="btn btn-outline disabled">
                                 <i class="fas fa-hourglass-half"></i>
                                 En cours
@@ -1108,6 +1113,18 @@ class UIManager {
         document.getElementById('modalHomeTeam').textContent = match.homeTeam;
         document.getElementById('modalAwayTeam').textContent = match.awayTeam;
         document.getElementById('modalMatchDate').textContent = this.formatDate(match.date);
+        
+        // Changer le titre du modal selon qu'il s'agit d'une modification ou d'un nouveau pronostic
+        const modalTitle = document.getElementById('modalTitle');
+        if (modalTitle) {
+            modalTitle.textContent = existingPrediction ? 'Modifier le Pronostic' : 'Faire un Pronostic';
+        }
+        
+        // Changer le texte du bouton de soumission
+        const submitButtonText = document.getElementById('submitButtonText');
+        if (submitButtonText) {
+            submitButtonText.textContent = existingPrediction ? 'Confirmer la Modification' : 'Confirmer le Pronostic';
+        }
         
         // Afficher le décompte
         const countdownElement = document.getElementById('modalCountdown');
