@@ -156,12 +156,15 @@ const CONFIG = {
     pointsSystem: {
         exactScore: 5,
         correctResult: 3,
-        goalDifference: 2
+        goalDifference: 2,
+        winnerRegular: 1 // Pour vainqueur après temps réglementaire en phase finale
     },
     tournaments: {
         worldcup: 'Coupe du Monde 2026',
         ligue1: 'Ligue 1 2024-25'
     },
+    // Tournois où les phases finales utilisent un système différent
+    finalPhasesTournaments: ['worldcup'], // Coupe du monde utilise des phases à élimination directe
     teamFlags: {
         // Équipes nationales
         'France': '🇫🇷',
@@ -933,7 +936,7 @@ class UIManager {
         // Charger la configuration des points
         document.getElementById('exactScorePoints').value = appData.pointsConfig.exactScore;
         document.getElementById('correctResultPoints').value = appData.pointsConfig.correctResult;
-        document.getElementById('goalDifferencePoints').value = appData.pointsConfig.goalDifference;
+        document.getElementById('winnerRegularPoints').value = appData.pointsConfig.winnerRegular || 1;
 
         // Charger les informations utilisateur SEULEMENT si on n'est pas en train de changer le nom
         const userNameInput = document.getElementById('userNameInput');
@@ -1290,8 +1293,12 @@ class UIManager {
 
     calculatePredictionPoints(matchId, actualHomeScore, actualAwayScore) {
         const matchPredictions = appData.predictions.filter(p => p.matchId === matchId);
+        const match = appData.matches.find(m => m.id === matchId);
         const actualResult = this.getMatchResult(actualHomeScore, actualAwayScore);
         const actualDifference = Math.abs(actualHomeScore - actualAwayScore);
+        
+        // Vérifier si c'est un tournoi de phase finale
+        const isFinalPhase = CONFIG.finalPhasesTournaments.includes(match.tournament);
 
         matchPredictions.forEach(prediction => {
             const predictedResult = this.getMatchResult(prediction.homeScore, prediction.awayScore);
@@ -1307,8 +1314,12 @@ class UIManager {
             else if (predictedResult === actualResult) {
                 points = appData.pointsConfig.correctResult;
             }
-            // Bonne différence de buts
-            else if (predictedDifference === actualDifference) {
+            // Pour les phases finales : vainqueur après temps réglementaire
+            else if (isFinalPhase && predictedResult === actualResult && actualResult !== 'nul') {
+                points = appData.pointsConfig.winnerRegular || 1;
+            }
+            // Bonne différence de buts (seulement pour les matchs non-phases finales)
+            else if (!isFinalPhase && predictedDifference === actualDifference) {
                 points = appData.pointsConfig.goalDifference;
             }
 
@@ -1365,9 +1376,9 @@ class UIManager {
     savePointsConfiguration() {
         const exactScore = parseInt(document.getElementById('exactScorePoints').value);
         const correctResult = parseInt(document.getElementById('correctResultPoints').value);
-        const goalDifference = parseInt(document.getElementById('goalDifferencePoints').value);
+        const winnerRegular = parseInt(document.getElementById('winnerRegularPoints').value);
 
-        if (isNaN(exactScore) || isNaN(correctResult) || isNaN(goalDifference)) {
+        if (isNaN(exactScore) || isNaN(correctResult) || isNaN(winnerRegular)) {
             this.showToast('Veuillez entrer des valeurs valides', 'error');
             return;
         }
@@ -1375,7 +1386,7 @@ class UIManager {
         appData.pointsConfig = {
             exactScore: exactScore,
             correctResult: correctResult,
-            goalDifference: goalDifference
+            winnerRegular: winnerRegular
         };
 
         appData.savePointsConfig();
