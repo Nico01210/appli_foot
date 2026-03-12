@@ -77,9 +77,10 @@ async function migrateData() {
             await User.create({
                 name: 'Administrateur',
                 email: 'admin@example.com',
+                password: 'admin1234',
                 is_admin: true
             });
-            console.log('✅ Utilisateur administrateur créé');
+            console.log('✅ Utilisateur administrateur créé (email: admin@example.com / mdp: admin1234)');
         } else {
             console.log('⏭️  Utilisateur administrateur déjà existant');
         }

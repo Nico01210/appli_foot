@@ -3,6 +3,7 @@ const router = express.Router();
 const Match = require('../models/Match');
 const authModule = require('./auth');
 const authenticateToken = authModule.authenticateToken;
+const requireAdmin = authModule.requireAdmin;
 
 // Obtenir tous les matchs
 router.get('/', async (req, res) => {
@@ -43,7 +44,7 @@ router.get('/:id', async (req, res) => {
 });
 
 // Créer un nouveau match (admin seulement)
-router.post('/', authenticateToken, async (req, res) => {
+router.post('/', authenticateToken, requireAdmin, async (req, res) => {
     try {
         const matchData = req.body;
         
@@ -52,6 +53,16 @@ router.post('/', authenticateToken, async (req, res) => {
             return res.status(400).json({ 
                 error: 'Les équipes et la date sont requises' 
             });
+        }
+
+        // Validation des noms d'équipe
+        if (matchData.team1.length > 50 || matchData.team2.length > 50) {
+            return res.status(400).json({ error: 'Nom d\'équipe trop long (max 50 caractères)' });
+        }
+
+        // Validation de la date
+        if (isNaN(new Date(matchData.date).getTime())) {
+            return res.status(400).json({ error: 'Date invalide' });
         }
 
         const match = await Match.create(matchData);
@@ -63,7 +74,7 @@ router.post('/', authenticateToken, async (req, res) => {
 });
 
 // Mettre à jour le score d'un match (admin seulement)
-router.put('/:id/score', authenticateToken, async (req, res) => {
+router.put('/:id/score', authenticateToken, requireAdmin, async (req, res) => {
     try {
         const { id } = req.params;
         const { team1_score, team2_score } = req.body;
@@ -92,8 +103,8 @@ router.put('/:id/score', authenticateToken, async (req, res) => {
     }
 });
 
-// Mettre à jour le statut d'un match
-router.put('/:id/status', authenticateToken, async (req, res) => {
+// Mettre à jour le statut d'un match (admin seulement)
+router.put('/:id/status', authenticateToken, requireAdmin, async (req, res) => {
     try {
         const { id } = req.params;
         const { status } = req.body;
@@ -116,13 +127,13 @@ router.put('/:id/status', authenticateToken, async (req, res) => {
 });
 
 // Supprimer un match (admin seulement)
-router.delete('/:id', authenticateToken, async (req, res) => {
+router.delete('/:id', authenticateToken, requireAdmin, async (req, res) => {
     try {
         const { id } = req.params;
         
         // Supprimer d'abord les prédictions associées
         const Prediction = require('../models/Prediction');
-        // Cette fonctionnalité pourrait être ajoutée si nécessaire
+        await Prediction.deleteByMatch(id);
         
         await Match.delete(id);
         

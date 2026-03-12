@@ -163,6 +163,12 @@ class Prediction {
         const sql = 'DELETE FROM predictions WHERE id = ?';
         return await dbUtils.run(sql, [predictionId]);
     }
+
+    // Supprimer toutes les prédictions d'un match
+    static async deleteByMatch(matchId) {
+        const sql = 'DELETE FROM predictions WHERE match_id = ?';
+        return await dbUtils.run(sql, [matchId]);
+    }
 }
 
 module.exports = Prediction;

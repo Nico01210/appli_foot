@@ -6,6 +6,9 @@ const { dbUtils } = require('../models/database');
 // Obtenir le classement général
 router.get('/', async (req, res) => {
     try {
+        const page = Math.max(1, parseInt(req.query.page) || 1);
+        const limit = Math.min(100, Math.max(1, parseInt(req.query.limit) || 50));
+        
         const users = await User.findAll();
         
         // Formatage du classement
@@ -21,7 +24,10 @@ router.get('/', async (req, res) => {
                 : 0
         }));
 
-        res.json(leaderboard);
+        const start = (page - 1) * limit;
+        const paginated = leaderboard.slice(start, start + limit);
+
+        res.json(paginated);
     } catch (error) {
         console.error('Erreur lors de la récupération du classement:', error);
         res.status(500).json({ error: 'Erreur serveur' });

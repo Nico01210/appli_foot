@@ -1,1715 +1,696 @@
-// Fonction globale simple pour changer le nom (accessible immédiatement)
-function changeUserName() {
-    console.log('🖱️ Clic détecté sur le nom utilisateur (fonction globale)');
-    
-    // Éviter les conflits avec le changement en cours
-    if (uiManager && uiManager.isChangingUserName) {
-        console.log('⚠️ Changement de nom déjà en cours, annulation');
-        return;
-    }
-    
-    const currentName = appData.currentUser.name;
-    const newName = prompt(`🎯 Modifier votre pseudonyme\n\nPseudonyme actuel : ${currentName}\n\nNouveau pseudonyme :`, currentName);
-    
-    console.log('📝 Nouveau nom saisi:', newName);
-    
-    if (newName && newName.trim() && newName.trim() !== currentName) {
-        changeUserNameLogic(newName.trim());
-    } else if (newName && newName.trim() === currentName) {
-        if (uiManager) {
-            uiManager.showToast('Le pseudonyme est identique', 'warning');
-        }
-    } else if (newName === '') {
-        if (uiManager) {
-            uiManager.showToast('Le pseudonyme ne peut pas être vide', 'error');
-        }
-    }
-}
-
-// Fonction globale pour la logique de changement de nom
-function changeUserNameLogic(newName) {
-    console.log('🔄 Changement de nom vers:', newName);
-    
-    // Marquer qu'on est en train de changer le nom
-    if (uiManager) {
-        uiManager.isChangingUserName = true;
-        console.log('✅ Flag isChangingUserName activé');
-    }
-    
-    // Vérifier si le nom n'est pas déjà pris par un autre utilisateur
-    console.log('🔍 Vérification si le nom est déjà pris...');
-    const existingUser = appData.users.find(u => 
-        u.name.toLowerCase() === newName.toLowerCase() && u.id !== appData.currentUser.id
-    );
-    
-    if (existingUser) {
-        console.log('❌ Nom déjà pris par:', existingUser.name);
-        if (uiManager) {
-            uiManager.showToast('Ce pseudonyme est déjà utilisé', 'error');
-            uiManager.isChangingUserName = false;
-        }
-        return;
-    }
-    console.log('✅ Nom disponible');
-
-    const oldName = appData.currentUser.name;
-    console.log('📝 Ancien nom:', oldName);
-    
-    // Mettre à jour le nom de l'utilisateur
-    console.log('🔄 Mise à jour des données utilisateur...');
-    appData.currentUser.name = newName;
-    appData.currentUser.lastActivity = new Date().toISOString();
-    console.log('✅ Données utilisateur mises à jour');
-    
-    // Sauvegarder
-    try {
-        console.log('💾 Sauvegarde en cours...');
-        appData.saveUser();
-        console.log('✅ saveUser() terminé');
-        
-        appData.updateUserInList();
-        console.log('✅ updateUserInList() terminé');
-    } catch (error) {
-        console.error('❌ Erreur lors de la sauvegarde:', error);
-        return;
-    }
-    
-    // Mettre à jour l'interface
-    if (uiManager) {
-        console.log('🔄 Début mise à jour interface après changement de nom');
-        
-        try {
-            // Mise à jour immédiate du header avec plusieurs approches
-            console.log('🔄 Appel updateHeader()...');
-            uiManager.updateHeader();
-            console.log('✅ updateHeader() terminé');
-            
-            // Approche alternative au cas où la première ne marche pas
-            setTimeout(() => {
-                console.log('🔄 Mise à jour header - tentative 2');
-                const userNameElement = document.getElementById('userName');
-                if (userNameElement) {
-                    userNameElement.textContent = newName;
-                    userNameElement.innerHTML = newName;
-                    console.log('📝 Header forcé avec:', newName);
-                }
-            }, 50);
-            
-            // Troisième tentative plus tard
-            setTimeout(() => {
-                console.log('🔄 Mise à jour header - tentative 3');
-                uiManager.updateHeader();
-            }, 200);
-            
-            console.log('🔄 Appel renderLeaderboard()...');
-            uiManager.renderLeaderboard();
-            console.log('✅ renderLeaderboard() terminé');
-            
-            console.log('🔄 Appel renderDashboard()...');
-            uiManager.renderDashboard();
-            console.log('✅ renderDashboard() terminé');
-            
-            uiManager.showToast(`Pseudonyme modifié : ${oldName} → ${newName}`, 'success');
-        } catch (error) {
-            console.error('❌ Erreur lors de la mise à jour de l\'interface:', error);
-        }
-        
-        // Mettre à jour les informations de profil sans recharger tout l'admin
-        try {
-            console.log('🔄 Mise à jour informations profil...');
-            if (appData.currentUser.createdAt) {
-                document.getElementById('memberSince').textContent = uiManager.formatDate(appData.currentUser.createdAt);
-            }
-            if (appData.currentUser.lastActivity) {
-                document.getElementById('lastActivity').textContent = uiManager.formatDate(appData.currentUser.lastActivity);
-            }
-            console.log('✅ Informations profil mises à jour');
-        } catch (error) {
-            console.error('❌ Erreur mise à jour profil:', error);
-        }
-        
-        // S'assurer que le champ input reflète la nouvelle valeur
-        try {
-            console.log('🔄 Mise à jour champ input...');
-            const userNameInput = document.getElementById('userNameInput');
-            if (userNameInput) {
-                userNameInput.value = newName;
-                console.log('📝 Champ input mis à jour avec:', newName);
-            }
-            console.log('✅ Champ input mis à jour');
-        } catch (error) {
-            console.error('❌ Erreur mise à jour champ input:', error);
-        }
-        
-        // Finir le processus de changement de nom
-        setTimeout(() => {
-            uiManager.isChangingUserName = false;
-            console.log('✅ Fin mise à jour interface après changement de nom');
-        }, 100); // Petit délai pour s'assurer que les mises à jour DOM sont appliquées
-    } else {
-        console.error('❌ uiManager non disponible');
-    }
-}
-
-// Configuration et constantes
+﻿// Configuration et constantes
 const CONFIG = {
     pointsSystem: {
         exactScore: 5,
         correctResult: 3,
-        winnerRegular: 1 // Pour vainqueur après temps réglementaire en phase finale
+        winnerRegular: 1
     },
     tournaments: {
         worldcup: 'Coupe du Monde 2026',
         ligue1: 'Ligue 1 2024-25'
     },
-    // Tournois où les phases finales utilisent un système différent
-    finalPhasesTournaments: ['worldcup'], // Coupe du monde utilise des phases à élimination directe
     teamFlags: {
-        // Équipes nationales
-        'France': '🇫🇷',
-        'Argentine': '🇦🇷',
-        'Brésil': '🇧🇷',
-        'Allemagne': '🇩🇪',
-        'Espagne': '🇪🇸',
-        'Italie': '🇮🇹',
-        'Portugal': '🇵🇹',
-        'Pays-Bas': '🇳🇱',
-        'Belgique': '🇧🇪',
-        'Angleterre': '🏴󠁧󠁢󠁥󠁮󠁧󠁿',
-        'Croatie': '🇭🇷',
-        'Maroc': '🇲🇦',
-        'Mexique': '🇲🇽',
-        'États-Unis': '🇺🇸',
-        'Canada': '🇨🇦',
-        'Japon': '🇯🇵',
-        'Corée du Sud': '🇰🇷',
-        'Australie': '🇦🇺',
-        'Suisse': '🇨🇭',
-        'Pologne': '🇵🇱',
-        'Danemark': '🇩🇰',
-        'Suède': '🇸🇪',
-        'Norvège': '🇳🇴',
-        'Autriche': '🇦🇹',
-        'République Tchèque': '🇨🇿',
-        'Hongrie': '🇭🇺',
-        'Slovaquie': '🇸🇰',
-        'Slovénie': '🇸🇮',
-        'Serbie': '🇷🇸',
-        'Grèce': '🇬🇷',
-        'Turquie': '🇹🇷',
-        'Russie': '🇷🇺',
-        'Ukraine': '🇺🇦',
-        'Irlande': '🇮🇪',
-        'Écosse': '🏴󠁧󠁢󠁳󠁣󠁴󠁿',
-        'Pays de Galles': '🏴󠁧󠁢󠁷󠁬󠁳󠁿',
-        'Roumanie': '🇷🇴',
-        'Bulgarie': '🇧🇬',
-        'Finlande': '🇫🇮',
-        'Estonie': '🇪🇪',
-        'Lettonie': '🇱🇻',
-        'Lituanie': '🇱🇹',
-        'Islande': '🇮🇸',
-        
-        // Équipes de Ligue 1
-        'PSG': '🔴🔵',
-        'Paris Saint-Germain': '🔴🔵',
-        'Marseille': '💙🤍',
-        'OM': '💙🤍',
-        'Olympique de Marseille': '💙🤍',
-        'Lyon': '🔴⚪',
-        'OL': '🔴⚪',
-        'Olympique Lyonnais': '🔴⚪',
-        'Monaco': '🔴⚪',
-        'AS Monaco': '🔴⚪',
-        'Lille': '🔴⚪',
-        'LOSC': '🔴⚪',
-        'Nice': '🔴⚫',
-        'OGC Nice': '🔴⚫',
-        'Rennes': '🔴⚫',
-        'Stade Rennais': '🔴⚫',
-        'Strasbourg': '🔵⚪',
-        'RC Strasbourg': '🔵⚪',
-        'Lens': '🟡🔴',
-        'RC Lens': '🟡🔴',
-        'Montpellier': '🔵🟠',
-        'MHSC': '🔵🟠',
-        'Nantes': '🟡🟢',
-        'FC Nantes': '🟡🟢',
-        'Reims': '🔴⚪',
-        'Stade de Reims': '🔴⚪',
-        'Toulouse': '🟣⚪',
-        'TFC': '🟣⚪',
-        'Brest': '🔴⚪',
-        'Stade Brestois': '🔴⚪',
-        'Le Havre': '🔵⚪',
-        'HAC': '🔵⚪',
-        'Clermont': '🔴🔵',
-        'Clermont Foot': '🔴🔵',
-        'Ajaccio': '🔴⚪',
-        'AC Ajaccio': '🔴⚪',
-        'Auxerre': '⚪🔵',
-        'AJ Auxerre': '⚪🔵',
-        'Troyes': '🔵⚪',
-        'ESTAC': '🔵⚪',
-        'Angers': '⚫⚪',
-        'SCO Angers': '⚫⚪'
+        'France': '\u{1F1EB}\u{1F1F7}', 'Argentine': '\u{1F1E6}\u{1F1F7}', 'Br\u00e9sil': '\u{1F1E7}\u{1F1F7}', 'Allemagne': '\u{1F1E9}\u{1F1EA}',
+        'Espagne': '\u{1F1EA}\u{1F1F8}', 'Italie': '\u{1F1EE}\u{1F1F9}', 'Portugal': '\u{1F1F5}\u{1F1F9}', 'Pays-Bas': '\u{1F1F3}\u{1F1F1}',
+        'Belgique': '\u{1F1E7}\u{1F1EA}', 'Angleterre': '\u{1F3F4}\u{E0067}\u{E0062}\u{E0065}\u{E006E}\u{E0067}\u{E007F}', 'Croatie': '\u{1F1ED}\u{1F1F7}', 'Maroc': '\u{1F1F2}\u{1F1E6}',
+        'Mexique': '\u{1F1F2}\u{1F1FD}', '\u00c9tats-Unis': '\u{1F1FA}\u{1F1F8}', 'Canada': '\u{1F1E8}\u{1F1E6}', 'Japon': '\u{1F1EF}\u{1F1F5}',
+        'Cor\u00e9e du Sud': '\u{1F1F0}\u{1F1F7}', 'Australie': '\u{1F1E6}\u{1F1FA}', 'Suisse': '\u{1F1E8}\u{1F1ED}', 'Pologne': '\u{1F1F5}\u{1F1F1}',
+        'Danemark': '\u{1F1E9}\u{1F1F0}', 'Su\u00e8de': '\u{1F1F8}\u{1F1EA}', 'Norv\u00e8ge': '\u{1F1F3}\u{1F1F4}', 'Autriche': '\u{1F1E6}\u{1F1F9}',
+        'R\u00e9publique Tch\u00e8que': '\u{1F1E8}\u{1F1FF}', 'Hongrie': '\u{1F1ED}\u{1F1FA}', 'Slovaquie': '\u{1F1F8}\u{1F1F0}',
+        'Slov\u00e9nie': '\u{1F1F8}\u{1F1EE}', 'Serbie': '\u{1F1F7}\u{1F1F8}', 'Gr\u00e8ce': '\u{1F1EC}\u{1F1F7}', 'Turquie': '\u{1F1F9}\u{1F1F7}',
+        'Russie': '\u{1F1F7}\u{1F1FA}', 'Ukraine': '\u{1F1FA}\u{1F1E6}', 'Irlande': '\u{1F1EE}\u{1F1EA}',
+        '\u00c9cosse': '\u{1F3F4}\u{E0067}\u{E0062}\u{E0073}\u{E0063}\u{E0074}\u{E007F}', 'Pays de Galles': '\u{1F3F4}\u{E0067}\u{E0062}\u{E0077}\u{E006C}\u{E0073}\u{E007F}',
+        'Roumanie': '\u{1F1F7}\u{1F1F4}', 'Bulgarie': '\u{1F1E7}\u{1F1EC}', 'Finlande': '\u{1F1EB}\u{1F1EE}',
+        'Estonie': '\u{1F1EA}\u{1F1EA}', 'Lettonie': '\u{1F1F1}\u{1F1FB}', 'Lituanie': '\u{1F1F1}\u{1F1F9}', 'Islande': '\u{1F1EE}\u{1F1F8}',
+        'Arabie Saoudite': '\u{1F1F8}\u{1F1E6}', 'Tunisie': '\u{1F1F9}\u{1F1F3}',
+        'PSG': '\u{1F534}\u{1F535}', 'Paris Saint-Germain': '\u{1F534}\u{1F535}',
+        'Marseille': '\u{1F499}\u{1F90D}', 'OM': '\u{1F499}\u{1F90D}', 'Olympique de Marseille': '\u{1F499}\u{1F90D}',
+        'Lyon': '\u{1F534}\u26AA', 'OL': '\u{1F534}\u26AA', 'Olympique Lyonnais': '\u{1F534}\u26AA',
+        'Monaco': '\u{1F534}\u26AA', 'AS Monaco': '\u{1F534}\u26AA',
+        'Lille': '\u{1F534}\u26AA', 'LOSC': '\u{1F534}\u26AA',
+        'Nice': '\u{1F534}\u26AB', 'OGC Nice': '\u{1F534}\u26AB',
+        'Rennes': '\u{1F534}\u26AB', 'Stade Rennais': '\u{1F534}\u26AB',
+        'Strasbourg': '\u{1F535}\u26AA', 'RC Strasbourg': '\u{1F535}\u26AA',
+        'Lens': '\u{1F7E1}\u{1F534}', 'RC Lens': '\u{1F7E1}\u{1F534}',
+        'Montpellier': '\u{1F535}\u{1F7E0}', 'MHSC': '\u{1F535}\u{1F7E0}',
+        'Nantes': '\u{1F7E1}\u{1F7E2}', 'FC Nantes': '\u{1F7E1}\u{1F7E2}',
+        'Reims': '\u{1F534}\u26AA', 'Stade de Reims': '\u{1F534}\u26AA',
+        'Toulouse': '\u{1F7E3}\u26AA', 'TFC': '\u{1F7E3}\u26AA',
+        'Brest': '\u{1F534}\u26AA', 'Stade Brestois': '\u{1F534}\u26AA',
+        'Le Havre': '\u{1F535}\u26AA', 'HAC': '\u{1F535}\u26AA',
+        'Clermont': '\u{1F534}\u{1F535}', 'Clermont Foot': '\u{1F534}\u{1F535}',
+        'Ajaccio': '\u{1F534}\u26AA', 'AC Ajaccio': '\u{1F534}\u26AA',
+        'Auxerre': '\u26AA\u{1F535}', 'AJ Auxerre': '\u26AA\u{1F535}',
+        'Troyes': '\u{1F535}\u26AA', 'ESTAC': '\u{1F535}\u26AA',
+        'Angers': '\u26AB\u26AA', 'SCO Angers': '\u26AB\u26AA'
     }
 };
 
-// Données de l'application
-class AppData {
-    constructor() {
-        this.currentUser = this.loadUser();
-        this.users = this.loadUsers();
-        this.matches = this.loadMatches();
-        this.predictions = this.loadPredictions();
-        this.pointsConfig = this.loadPointsConfig();
-        this.currentTournament = 'worldcup';
-    }
-
-    loadUser() {
-        const userData = localStorage.getItem('currentUser');
-        return userData ? JSON.parse(userData) : {
-            id: 'user_' + Date.now(),
-            name: 'Joueur',
-            points: 0,
-            totalPredictions: 0,
-            correctPredictions: 0,
-            createdAt: new Date().toISOString(),
-            lastActivity: new Date().toISOString()
-        };
-    }
-
-    saveUser() {
-        localStorage.setItem('currentUser', JSON.stringify(this.currentUser));
-    }
-
-    loadUsers() {
-        const usersData = localStorage.getItem('users');
-        const users = usersData ? JSON.parse(usersData) : [];
-        
-        // Ajouter l'utilisateur actuel s'il n'existe pas
-        if (!users.find(u => u.id === this.currentUser.id)) {
-            users.push(this.currentUser);
-        }
-        
-        return users;
-    }
-
-    saveUsers() {
-        localStorage.setItem('users', JSON.stringify(this.users));
-    }
-
-    loadMatches() {
-        const matchesData = localStorage.getItem('matches');
-        return matchesData ? JSON.parse(matchesData) : this.getDefaultMatches();
-    }
-
-    saveMatches() {
-        localStorage.setItem('matches', JSON.stringify(this.matches));
-    }
-
-    loadPredictions() {
-        const predictionsData = localStorage.getItem('predictions');
-        return predictionsData ? JSON.parse(predictionsData) : [];
-    }
-
-    savePredictions() {
-        localStorage.setItem('predictions', JSON.stringify(this.predictions));
-    }
-
-    loadPointsConfig() {
-        const configData = localStorage.getItem('pointsConfig');
-        return configData ? JSON.parse(configData) : CONFIG.pointsSystem;
-    }
-
-    savePointsConfig() {
-        localStorage.setItem('pointsConfig', JSON.stringify(this.pointsConfig));
-    }
-
-    getDefaultMatches() {
-        return [
-            // Matchs Coupe du Monde 2026
-            {
-                id: 'wc_1',
-                homeTeam: 'France',
-                awayTeam: 'Argentine',
-                date: '2026-06-15T20:00:00',
-                tournament: 'worldcup',
-                status: 'upcoming',
-                homeScore: null,
-                awayScore: null
-            },
-            {
-                id: 'wc_2',
-                homeTeam: 'Brésil',
-                awayTeam: 'Allemagne',
-                date: '2026-06-16T16:00:00',
-                tournament: 'worldcup',
-                status: 'upcoming',
-                homeScore: null,
-                awayScore: null
-            },
-            {
-                id: 'wc_3',
-                homeTeam: 'Espagne',
-                awayTeam: 'Italie',
-                date: '2026-06-17T20:00:00',
-                tournament: 'worldcup',
-                status: 'upcoming',
-                homeScore: null,
-                awayScore: null
-            },
-            // Matchs Ligue 1
-            {
-                id: 'l1_1',
-                homeTeam: 'PSG',
-                awayTeam: 'Marseille',
-                date: '2024-10-20T21:00:00',
-                tournament: 'ligue1',
-                status: 'completed',
-                homeScore: 2,
-                awayScore: 1
-            },
-            {
-                id: 'l1_2',
-                homeTeam: 'Lyon',
-                awayTeam: 'Monaco',
-                date: '2024-10-21T17:00:00',
-                tournament: 'ligue1',
-                status: 'upcoming',
-                homeScore: null,
-                awayScore: null
-            },
-            {
-                id: 'l1_3',
-                homeTeam: 'Lille',
-                awayTeam: 'Nice',
-                date: '2024-10-22T20:00:00',
-                tournament: 'ligue1',
-                status: 'upcoming',
-                homeScore: null,
-                awayScore: null
-            },
-            // Match en attente de confirmation (date passée mais pas encore confirmé)
-            {
-                id: 'l1_4',
-                homeTeam: 'Lens',
-                awayTeam: 'Rennes',
-                date: '2024-10-22T15:00:00',
-                tournament: 'ligue1',
-                status: 'upcoming',
-                homeScore: null,
-                awayScore: null
-            }
-        ];
-    }
-
-    updateUserInList() {
-        const userIndex = this.users.findIndex(u => u.id === this.currentUser.id);
-        if (userIndex !== -1) {
-            this.users[userIndex] = { ...this.currentUser };
-        } else {
-            this.users.push(this.currentUser);
-        }
-        this.saveUsers();
-    }
-}
-
-    // Instance globale des données
-const appData = new AppData();
-
-// Fonction utilitaire pour obtenir le drapeau d'une équipe
 function getTeamFlag(teamName) {
-    return CONFIG.teamFlags[teamName] || '⚽';
+    return CONFIG.teamFlags[teamName] || '\u26BD';
 }
 
-// Gestionnaire d'interface utilisateur
+// --- Etat global de l'application ---
+const appState = {
+    currentUser: null,
+    matches: [],
+    leaderboard: [],
+    currentTournament: 'worldcup',
+    isAdmin: false
+};
+
+// --- Classe principale UI ---
 class UIManager {
     constructor() {
         this.currentTab = 'dashboard';
-        this.isChangingUserName = false; // Flag pour éviter les conflits
-        this.countdownUpdateInterval = null; // Pour mettre à jour les décomptes périodiquement
-        this.initializeEventListeners();
-        this.updateUI();
-        this.startCountdownUpdates(); // Démarrer la mise à jour périodique des décomptes
+        this.countdownInterval = null;
     }
 
-    initializeEventListeners() {
-        console.log('🔧 Initialisation des événements...');
-        
+    async init() {
+        this.bindEvents();
+        this.startCountdownUpdates();
+
+        if (apiClient.isLoggedIn()) {
+            try {
+                const user = await apiClient.getCurrentUser();
+                appState.currentUser = user;
+                appState.isAdmin = user.is_admin ? true : false;
+                this.showApp();
+            } catch (e) {
+                apiClient.logout();
+                this.showAuth();
+            }
+        } else {
+            this.showAuth();
+        }
+    }
+
+    bindEvents() {
         // Navigation
         document.querySelectorAll('.nav-tab').forEach(tab => {
-            tab.addEventListener('click', (e) => {
-                const tabName = e.currentTarget.dataset.tab;
-                this.switchTab(tabName);
-            });
+            tab.addEventListener('click', (e) => this.switchTab(e.currentTarget.dataset.tab));
         });
 
-        // Sélecteur de tournoi
+        // Selecteur de tournoi
         document.getElementById('tournamentSelect').addEventListener('change', (e) => {
-            appData.currentTournament = e.target.value;
-            this.updateUI();
+            appState.currentTournament = e.target.value;
+            this.renderMatches();
+            this.renderDashboard();
         });
 
         // Filtre des matchs
-        document.getElementById('matchFilter').addEventListener('change', () => {
-            this.renderMatches();
-        });
+        document.getElementById('matchFilter').addEventListener('change', () => this.renderMatches());
 
-        // Boutons de période du classement
+        // Classement - periodes
         document.querySelectorAll('.period-btn').forEach(btn => {
             btn.addEventListener('click', (e) => {
                 document.querySelectorAll('.period-btn').forEach(b => b.classList.remove('active'));
                 e.currentTarget.classList.add('active');
-                this.renderLeaderboard();
             });
         });
 
-        // Modal
-        document.getElementById('closePredictionModal').addEventListener('click', () => {
-            this.closeModal();
-        });
-
+        // Modal pronostic
+        document.getElementById('closePredictionModal').addEventListener('click', () => this.closeModal());
         document.getElementById('predictionModal').addEventListener('click', (e) => {
-            if (e.target.id === 'predictionModal') {
-                this.closeModal();
-            }
+            if (e.target.id === 'predictionModal') this.closeModal();
         });
+        document.getElementById('submitPrediction').addEventListener('click', () => this.submitPrediction());
 
-        // Formulaire de pronostic
-        document.getElementById('submitPrediction').addEventListener('click', () => {
-            this.submitPrediction();
-        });
-
-        // Admin
-        document.getElementById('savePointsConfig').addEventListener('click', () => {
-            this.savePointsConfiguration();
-        });
-
-        // Événement pour le bouton de modification du nom d'utilisateur
-        const saveUserNameBtn = document.getElementById('saveUserName');
-        if (saveUserNameBtn) {
-            console.log('✅ Bouton saveUserName trouvé, ajout de l\'événement');
-            saveUserNameBtn.addEventListener('click', () => {
-                console.log('🖱️ Clic détecté sur le bouton Modifier (admin)');
-                const userNameInput = document.getElementById('userNameInput');
-                const newName = userNameInput.value.trim();
-                console.log('📝 Nouveau nom saisi (admin):', `"${newName}"`);
-                console.log('📝 Nom actuel:', `"${appData.currentUser.name}"`);
-                console.log('📝 Comparaison strict:', newName === appData.currentUser.name);
-                console.log('📝 Longueur nouveau nom:', newName.length);
-                console.log('📝 Longueur nom actuel:', appData.currentUser.name.length);
-                
-                if (!newName) {
-                    console.warn('⚠️ Nom vide');
-                    if (uiManager && uiManager.showToast) {
-                        uiManager.showToast('Le pseudonyme ne peut pas être vide', 'error');
-                    } else {
-                        alert('Le pseudonyme ne peut pas être vide');
-                    }
-                    return;
-                }
-                
-                if (newName === appData.currentUser.name) {
-                    console.warn('⚠️ Nom identique - annulation');
-                    if (uiManager && uiManager.showToast) {
-                        uiManager.showToast('Le pseudonyme est identique au précédent', 'warning');
-                    } else {
-                        alert('Le pseudonyme est identique au précédent');
-                    }
-                    return;
-                }
-                
-                console.log('✅ Appel de changeUserNameLogic avec:', `"${newName}"`);
-                
-                // Debug: vérifier l'état avant le changement
-                const userNameElement = document.getElementById('userName');
-                console.log('🔍 État avant changement:');
-                console.log('  - Element trouvé:', !!userNameElement);
-                console.log('  - Contenu actuel:', userNameElement ? userNameElement.textContent : 'N/A');
-                console.log('  - Style display:', userNameElement ? userNameElement.style.display : 'N/A');
-                
-                changeUserNameLogic(newName);
-            });
-        } else {
-            console.error('❌ Bouton saveUserName non trouvé!');
-        }
-
+        // Admin - form ajout match
         document.getElementById('addMatchForm').addEventListener('submit', (e) => {
             e.preventDefault();
             this.addNewMatch();
         });
 
-        // Initialiser les valeurs admin
-        this.loadAdminValues();
+        // Header login/logout
+        document.getElementById('loginHeaderBtn').addEventListener('click', () => this.showAuth());
+        document.getElementById('logoutBtn').addEventListener('click', () => this.logout());
+
+        // Auth form - tabs login/register
+        document.getElementById('authTabLogin').addEventListener('click', () => this.switchAuthTab('login'));
+        document.getElementById('authTabRegister').addEventListener('click', () => this.switchAuthTab('register'));
+        document.getElementById('loginBtn').addEventListener('click', () => this.handleLogin());
+        document.getElementById('registerBtn').addEventListener('click', () => this.handleRegister());
+
+        // Admin - save username
+        document.getElementById('saveUserName').addEventListener('click', () => this.changeUserName());
     }
 
-    switchTab(tabName) {
-        // Mettre à jour les onglets
-        document.querySelectorAll('.nav-tab').forEach(tab => {
-            tab.classList.remove('active');
-        });
-        document.querySelector(`[data-tab="${tabName}"]`).classList.add('active');
+    // === AUTH ===
+    switchAuthTab(tab) {
+        document.getElementById('authTabLogin').classList.toggle('active', tab === 'login');
+        document.getElementById('authTabRegister').classList.toggle('active', tab === 'register');
+        document.getElementById('loginForm').style.display = tab === 'login' ? 'block' : 'none';
+        document.getElementById('registerForm').style.display = tab === 'register' ? 'block' : 'none';
+    }
 
-        // Mettre à jour le contenu
-        document.querySelectorAll('.tab-content').forEach(content => {
-            content.classList.remove('active');
-        });
-        document.getElementById(tabName).classList.add('active');
+    async handleLogin() {
+        const email = document.getElementById('loginEmail').value.trim();
+        const password = document.getElementById('loginPassword').value;
+
+        if (!email || !password) {
+            this.showToast('Veuillez remplir tous les champs', 'error');
+            return;
+        }
+
+        try {
+            const data = await apiClient.login(email, password);
+            appState.currentUser = data.user;
+            appState.isAdmin = data.user.is_admin ? true : false;
+            this.showToast('Bienvenue ' + data.user.name + ' !', 'success');
+            this.showApp();
+        } catch (error) {
+            this.showToast(error.message, 'error');
+        }
+    }
+
+    async handleRegister() {
+        const name = document.getElementById('registerName').value.trim();
+        const email = document.getElementById('registerEmail').value.trim();
+        const password = document.getElementById('registerPassword').value;
+
+        if (!name || !email || !password) {
+            this.showToast('Veuillez remplir tous les champs', 'error');
+            return;
+        }
+
+        if (password.length < 4) {
+            this.showToast('Le mot de passe doit faire au moins 4 caracteres', 'error');
+            return;
+        }
+
+        try {
+            const data = await apiClient.register(name, email, password);
+            appState.currentUser = data.user;
+            appState.isAdmin = data.user.is_admin ? true : false;
+            this.showToast('Bienvenue ' + data.user.name + ' !', 'success');
+            this.showApp();
+        } catch (error) {
+            this.showToast(error.message, 'error');
+        }
+    }
+
+    logout() {
+        apiClient.logout();
+        appState.currentUser = null;
+        appState.isAdmin = false;
+        this.showAuth();
+        this.showToast('Deconnecte', 'success');
+    }
+
+    showAuth() {
+        document.getElementById('auth').style.display = 'block';
+        document.querySelector('nav').style.display = 'none';
+        document.querySelector('.main').style.display = 'none';
+        document.getElementById('authenticated-user').style.display = 'none';
+        document.getElementById('guest-user').style.display = 'block';
+    }
+
+    async showApp() {
+        document.getElementById('auth').style.display = 'none';
+        document.querySelector('nav').style.display = 'block';
+        document.querySelector('.main').style.display = 'block';
+        document.getElementById('authenticated-user').style.display = 'flex';
+        document.getElementById('guest-user').style.display = 'none';
+
+        // Admin tab visibility
+        const adminTab = document.querySelector('[data-tab="admin"]');
+        if (adminTab) adminTab.style.display = appState.isAdmin ? '' : 'none';
+
+        await this.loadAllData();
+        this.switchTab('dashboard');
+    }
+
+    // === CHARGEMENT DES DONNEES ===
+    async loadAllData() {
+        try {
+            const userId = appState.currentUser ? appState.currentUser.id : null;
+            const [matches, leaderboard] = await Promise.all([
+                apiClient.getMatches(userId),
+                apiClient.getLeaderboard()
+            ]);
+            appState.matches = matches;
+            appState.leaderboard = leaderboard;
+            this.updateHeader();
+            this.renderDashboard();
+            this.renderMatches();
+            this.renderLeaderboard();
+            if (appState.isAdmin) this.renderAdmin();
+        } catch (error) {
+            this.showToast('Erreur de chargement des donnees', 'error');
+        }
+    }
+
+    // === NAVIGATION ===
+    switchTab(tabName) {
+        document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+        var tabEl = document.querySelector('[data-tab="' + tabName + '"]');
+        if (tabEl) tabEl.classList.add('active');
+
+        document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+        var contentEl = document.getElementById(tabName);
+        if (contentEl) contentEl.classList.add('active');
 
         this.currentTab = tabName;
 
-        // Rafraîchir le contenu selon l'onglet
-        switch (tabName) {
-            case 'dashboard':
-                this.renderDashboard();
-                break;
-            case 'predictions':
-                this.renderMatches();
-                break;
-            case 'leaderboard':
-                this.renderLeaderboard();
-                break;
-            case 'rules':
-                // Onglet statique, pas de rendu nécessaire
-                break;
-            case 'admin':
-                this.renderAdmin();
-                break;
-        }
+        if (tabName === 'predictions') this.renderMatches();
+        else if (tabName === 'leaderboard') this.loadLeaderboard();
+        else if (tabName === 'admin' && appState.isAdmin) this.renderAdmin();
     }
 
-    updateUI() {
-        this.updateHeader();
-        this.renderDashboard();
-        this.renderMatches();
-        this.renderLeaderboard();
-        this.renderAdmin();
+    async loadLeaderboard() {
+        try {
+            appState.leaderboard = await apiClient.getLeaderboard();
+            this.renderLeaderboard();
+        } catch (e) { /* ignore */ }
     }
 
+    // === HEADER ===
     updateHeader() {
-        console.log('🔄 Mise à jour du header avec le nom:', appData.currentUser.name);
-        const userNameElement = document.getElementById('userName');
-        const userPointsElement = document.getElementById('userPoints');
-        
-        if (userNameElement) {
-            console.log('📝 Ancien nom affiché:', `"${userNameElement.textContent}"`);
-            console.log('📝 Element trouvé:', userNameElement);
-            console.log('📝 Element parent:', userNameElement.parentElement);
-            
-            // Méthode 1: Changement direct
-            userNameElement.textContent = appData.currentUser.name;
-            
-            // Méthode 2: Forcer avec innerHTML
-            userNameElement.innerHTML = appData.currentUser.name;
-            
-            // Méthode 3: Recréer l'attribut onclick pour s'assurer qu'il reste fonctionnel
-            userNameElement.setAttribute('onclick', 'changeUserName()');
-            userNameElement.setAttribute('title', 'Cliquer pour modifier votre pseudonyme');
-            
-            console.log('📝 Nouveau nom affiché:', `"${userNameElement.textContent}"`);
-            
-            // S'assurer que l'élément reste cliquable
-            userNameElement.style.cursor = 'pointer';
-            userNameElement.style.userSelect = 'none';
-            
-            // Forcer plusieurs types de rafraîchissement
-            userNameElement.style.display = 'none';
-            userNameElement.offsetHeight; // Force reflow
-            userNameElement.style.display = 'inline';
-            
-            // Déclencher un événement de changement
-            userNameElement.dispatchEvent(new Event('change', { bubbles: true }));
-            
-            console.log('✅ Header mis à jour pour:', appData.currentUser.name);
-        } else {
-            console.error('❌ Élément userName non trouvé dans updateHeader');
-            console.log('🔍 Recherche d\'éléments similaires...');
-            const allSpans = document.querySelectorAll('span');
-            allSpans.forEach((span, index) => {
-                if (span.className.includes('user') || span.id.includes('user')) {
-                    console.log(`🔍 Span ${index}:`, span.id, span.className, span.textContent);
-                }
-            });
-        }
-        
-        if (userPointsElement) {
-            userPointsElement.textContent = appData.currentUser.points;
-        }
+        var user = appState.currentUser;
+        if (!user) return;
+        document.getElementById('userName').textContent = user.name;
+        document.getElementById('userPoints').textContent = user.points || 0;
     }
 
+    // === DASHBOARD ===
     renderDashboard() {
-        const userPredictions = appData.predictions.filter(p => p.userId === appData.currentUser.id);
-        const tournamentPredictions = userPredictions.filter(p => {
-            const match = appData.matches.find(m => m.id === p.matchId);
-            return match && match.tournament === appData.currentTournament;
-        });
+        var user = appState.currentUser;
+        if (!user) return;
 
-        const correctPredictions = tournamentPredictions.filter(p => p.points > 0).length;
-        const accuracy = tournamentPredictions.length > 0 ? 
-            Math.round((correctPredictions / tournamentPredictions.length) * 100) : 0;
+        var matches = appState.matches.filter(function(m) { return m.tournament === appState.currentTournament; });
+        var predictions = matches.filter(function(m) { return m.userPrediction; });
+        var correct = predictions.filter(function(m) { return m.userPrediction && m.userPrediction.points_earned > 0; });
+        var total = predictions.length;
+        var accuracy = total > 0 ? Math.round((correct.length / total) * 100) : 0;
 
-        // Calculer le rang
-        const leaderboard = this.calculateLeaderboard();
-        const userRank = leaderboard.findIndex(user => user.id === appData.currentUser.id) + 1;
+        var rank = appState.leaderboard.find(function(u) { return u.id === user.id; });
 
-        // Mettre à jour les statistiques
-        document.getElementById('totalPredictions').textContent = tournamentPredictions.length;
-        document.getElementById('correctPredictions').textContent = correctPredictions;
+        document.getElementById('totalPredictions').textContent = total;
+        document.getElementById('correctPredictions').textContent = correct.length;
         document.getElementById('accuracy').textContent = accuracy + '%';
-        document.getElementById('userRank').textContent = userRank > 0 ? userRank : '-';
+        document.getElementById('userRank').textContent = rank ? rank.rank : '-';
 
-        // Afficher les pronostics récents
-        this.renderRecentPredictions();
+        this.renderRecentPredictions(matches);
     }
 
-    renderRecentPredictions() {
-        const userPredictions = appData.predictions
-            .filter(p => p.userId === appData.currentUser.id)
-            .sort((a, b) => new Date(b.date) - new Date(a.date))
+    renderRecentPredictions(matches) {
+        var container = document.getElementById('recentPredictionsList');
+        var withPredictions = matches
+            .filter(function(m) { return m.userPrediction; })
+            .sort(function(a, b) { return new Date(b.date) - new Date(a.date); })
             .slice(0, 5);
 
-        const container = document.getElementById('recentPredictionsList');
-        container.innerHTML = '';
-
-        if (userPredictions.length === 0) {
-            container.innerHTML = '<p class="text-center">Aucun pronostic récent</p>';
+        if (withPredictions.length === 0) {
+            container.innerHTML = '<p class="text-center">Aucun pronostic recent</p>';
             return;
         }
 
-        userPredictions.forEach(prediction => {
-            const match = appData.matches.find(m => m.id === prediction.matchId);
-            if (!match) return;
+        var self = this;
+        container.innerHTML = withPredictions.map(function(match) {
+            var pred = match.userPrediction;
+            var isCompleted = match.status === 'completed';
+            var statusClass = isCompleted ? (pred.points_earned > 0 ? 'success' : 'error') : 'upcoming';
+            var tournamentName = CONFIG.tournaments[match.tournament] || match.tournament;
 
-            const predictionCard = document.createElement('div');
-            predictionCard.className = 'match-card';
-            
-            const statusClass = match.status === 'completed' ? 
-                (prediction.points > 0 ? 'success' : 'error') : 'upcoming';
-
-            predictionCard.innerHTML = `
-                <div class="match-header">
-                    <span class="match-tournament">${CONFIG.tournaments[match.tournament]}</span>
-                    <span class="match-date">${this.formatDate(match.date)}</span>
-                </div>
-                <div class="match-body">
-                    <div class="match-teams">
-                        <div class="team">
-                            <div class="team-flag">${getTeamFlag(match.homeTeam)}</div>
-                            <div class="team-name">${match.homeTeam}</div>
-                        </div>
-                        <div class="vs">VS</div>
-                        <div class="team">
-                            <div class="team-flag">${getTeamFlag(match.awayTeam)}</div>
-                            <div class="team-name">${match.awayTeam}</div>
-                        </div>
-                    </div>
-                    <div class="prediction-info">
-                        <div class="predicted-score">${prediction.homeScore} - ${prediction.awayScore}</div>
-                        ${match.status === 'completed' ? 
-                            `<div class="prediction-points ${statusClass}">
-                                ${prediction.points > 0 ? '+' + prediction.points + ' points' : 'Aucun point'}
-                            </div>` : 
-                            '<div class="prediction-points">En attente</div>'
-                        }
-                    </div>
-                </div>
-            `;
-
-            container.appendChild(predictionCard);
-        });
+            return '<div class="match-card">' +
+                '<div class="match-header">' +
+                    '<span class="match-tournament">' + tournamentName + '</span>' +
+                    '<span class="match-date">' + self.formatDate(match.date) + '</span>' +
+                '</div>' +
+                '<div class="match-body">' +
+                    '<div class="match-teams">' +
+                        '<div class="team"><div class="team-flag">' + getTeamFlag(match.team1) + '</div><div class="team-name">' + match.team1 + '</div></div>' +
+                        '<div class="vs">VS</div>' +
+                        '<div class="team"><div class="team-flag">' + getTeamFlag(match.team2) + '</div><div class="team-name">' + match.team2 + '</div></div>' +
+                    '</div>' +
+                    '<div class="prediction-info">' +
+                        '<div class="predicted-score">' + pred.team1_score + ' - ' + pred.team2_score + '</div>' +
+                        (isCompleted 
+                            ? '<div class="prediction-points ' + statusClass + '">' + (pred.points_earned > 0 ? '+' + pred.points_earned + ' points' : 'Aucun point') + '</div>'
+                            : '<div class="prediction-points">En attente</div>') +
+                    '</div>' +
+                '</div>' +
+            '</div>';
+        }).join('');
     }
 
+    // === MATCHS ===
     renderMatches() {
-        const filter = document.getElementById('matchFilter').value;
-        let filteredMatches = appData.matches.filter(match => match.tournament === appData.currentTournament);
+        var filter = document.getElementById('matchFilter').value;
+        var matches = appState.matches.filter(function(m) { return m.tournament === appState.currentTournament; });
 
-        switch (filter) {
-            case 'upcoming':
-                filteredMatches = filteredMatches.filter(match => match.status === 'upcoming');
-                break;
-            case 'completed':
-                filteredMatches = filteredMatches.filter(match => match.status === 'completed');
-                break;
-        }
+        if (filter === 'upcoming') matches = matches.filter(function(m) { return m.status !== 'completed'; });
+        else if (filter === 'completed') matches = matches.filter(function(m) { return m.status === 'completed'; });
 
-        // Tri différent selon le filtre
         if (filter === 'completed') {
-            // Pour les matchs terminés, trier du plus récent au plus ancien
-            filteredMatches.sort((a, b) => new Date(b.date) - new Date(a.date));
+            matches.sort(function(a, b) { return new Date(b.date) - new Date(a.date); });
         } else {
-            // Pour les matchs à venir, trier du plus proche au plus éloigné
-            filteredMatches.sort((a, b) => new Date(a.date) - new Date(b.date));
+            matches.sort(function(a, b) { return new Date(a.date) - new Date(b.date); });
         }
 
-        const container = document.getElementById('matchesList');
-        container.innerHTML = '';
-
-        if (filteredMatches.length === 0) {
-            const emptyMessage = filter === 'completed' ? 
-                'Aucun match terminé pour ce tournoi' : 
-                'Aucun match à venir pour ce tournoi';
-            container.innerHTML = `<p class="text-center">${emptyMessage}</p>`;
+        var container = document.getElementById('matchesList');
+        if (matches.length === 0) {
+            container.innerHTML = '<p class="text-center">' + (filter === 'completed' ? 'Aucun match termine' : 'Aucun match a venir') + '</p>';
             return;
         }
 
-        filteredMatches.forEach(match => {
-            const userPrediction = appData.predictions.find(p => 
-                p.matchId === match.id && p.userId === appData.currentUser.id
-            );
+        var self = this;
+        container.innerHTML = matches.map(function(match) {
+            var pred = match.userPrediction;
+            var isCompleted = match.status === 'completed';
+            var canPredict = !isCompleted && new Date(match.date) > new Date();
+            var tournamentName = CONFIG.tournaments[match.tournament] || match.tournament;
 
-            const matchCard = document.createElement('div');
-            matchCard.className = `match-card ${match.status === 'completed' ? 'completed-match' : ''}`;
+            var completedDisplay = isCompleted ? 
+                '<div class="final-result">' +
+                    '<div class="result-header"><i class="fas fa-check-circle"></i> <span>Resultat final</span></div>' +
+                    '<div class="final-score-display">' +
+                        '<span class="team-score">' + match.team1 + ' ' + match.team1_score + '</span>' +
+                        '<span class="score-separator">-</span>' +
+                        '<span class="team-score">' + match.team2_score + ' ' + match.team2 + '</span>' +
+                    '</div>' +
+                '</div>' : '';
 
-            const isUpcoming = match.status === 'upcoming';
-            const canPredict = isUpcoming && new Date(match.date) > new Date();
+            var predictionDisplay = '';
+            if (pred) {
+                predictionDisplay = '<div class="prediction-info">' +
+                    '<div class="predicted-score"><i class="fas fa-user"></i> Votre pronostic: ' + pred.team1_score + ' - ' + pred.team2_score + '</div>';
+                if (isCompleted) {
+                    var ptClass = pred.points_earned > 0 ? 'success' : 'error';
+                    var ptIcon = pred.points_earned > 0 ? 'trophy' : 'times';
+                    var ptText = pred.points_earned > 0 ? '+' + pred.points_earned + ' points' : 'Aucun point';
+                    predictionDisplay += '<div class="prediction-result"><div class="prediction-points ' + ptClass + '"><i class="fas fa-' + ptIcon + '"></i> ' + ptText + '</div></div>';
+                } else {
+                    predictionDisplay += '<div class="prediction-points pending">En attente du resultat</div>';
+                }
+                predictionDisplay += '</div>';
+            } else if (isCompleted) {
+                predictionDisplay = '<div class="no-prediction"><i class="fas fa-exclamation-triangle"></i> Aucun pronostic effectue</div>';
+            }
 
-            // Affichage spécial pour les matchs terminés
-            const completedMatchDisplay = match.status === 'completed' ? `
-                <div class="final-result">
-                    <div class="result-header">
-                        <i class="fas fa-check-circle"></i>
-                        <span>Résultat final</span>
-                    </div>
-                    <div class="final-score-display">
-                        <span class="team-score">${match.homeTeam} ${match.homeScore}</span>
-                        <span class="score-separator">-</span>
-                        <span class="team-score">${match.awayScore} ${match.awayTeam}</span>
-                    </div>
-                </div>
-            ` : '';
+            var actionsDisplay = canPredict ? 
+                '<button class="btn ' + (pred ? 'btn-outline' : 'btn-primary') + '" onclick="uiManager.openPredictionModal(\'' + match.id + '\')">' +
+                    '<i class="fas fa-' + (pred ? 'edit' : 'plus') + '"></i> ' + (pred ? 'Modifier' : 'Pronostiquer') +
+                '</button>' : '';
 
-            matchCard.innerHTML = `
-                <div class="match-header">
-                    <span class="match-tournament">${CONFIG.tournaments[match.tournament]}</span>
-                    <div class="match-info-row">
-                        <span class="match-date">${this.formatDate(match.date)}</span>
-                        ${isUpcoming && canPredict ? `<span class="match-countdown" style="font-size: 0.85rem; color: var(--primary-color); font-weight: 600;">Pronostiquer avant: ${this.formatTimeRemaining(match.date)}</span>` : ''}
-                    </div>
-                    ${match.status === 'completed' ? '<span class="match-status completed"><i class="fas fa-check"></i> Terminé</span>' : ''}
-                </div>
-                <div class="match-body">
-                    <div class="match-teams">
-                        <div class="team">
-                            <div class="team-flag">${getTeamFlag(match.homeTeam)}</div>
-                            <div class="team-name">${match.homeTeam}</div>
-                            ${match.status === 'completed' ? `<div class="final-score">${match.homeScore}</div>` : ''}
-                        </div>
-                        <div class="vs">${match.status === 'completed' ? '-' : 'VS'}</div>
-                        <div class="team">
-                            <div class="team-flag">${getTeamFlag(match.awayTeam)}</div>
-                            <div class="team-name">${match.awayTeam}</div>
-                            ${match.status === 'completed' ? `<div class="final-score">${match.awayScore}</div>` : ''}
-                        </div>
-                    </div>
-                    
-                    ${completedMatchDisplay}
-                    
-                    ${userPrediction ? `
-                        <div class="prediction-info">
-                            <div class="predicted-score">
-                                <i class="fas fa-user"></i>
-                                Votre pronostic: ${userPrediction.homeScore} - ${userPrediction.awayScore}
-                            </div>
-                            ${match.status === 'completed' ? 
-                                `<div class="prediction-result">
-                                    <div class="prediction-points ${userPrediction.points > 0 ? 'success' : 'error'}">
-                                        <i class="fas fa-${userPrediction.points > 0 ? 'trophy' : 'times'}"></i>
-                                        ${userPrediction.points > 0 ? '+' + userPrediction.points + ' points' : 'Aucun point'}
-                                    </div>
-                                    ${userPrediction.points > 0 ? `
-                                        <div class="prediction-accuracy">
-                                            ${this.getPredictionAccuracyText(userPrediction, match)}
-                                        </div>
-                                    ` : ''}
-                                </div>` : 
-                                '<div class="prediction-points pending">En attente du résultat</div>'
-                            }
-                        </div>
-                    ` : match.status === 'completed' ? `
-                        <div class="no-prediction">
-                            <i class="fas fa-exclamation-triangle"></i>
-                            Aucun pronostic effectué
-                        </div>
-                    ` : ''}
-                    
-                    <div class="match-actions">
-                        ${canPredict ? `
-                            <button class="btn ${userPrediction ? 'btn-outline' : 'btn-primary'}" 
-                                    onclick="uiManager.openPredictionModal('${match.id}')">
-                                <i class="fas fa-${userPrediction ? 'edit' : 'plus'}"></i>
-                                ${userPrediction ? 'Modifier' : 'Pronostiquer'}
-                            </button>
-                        ` : userPrediction && match.status === 'upcoming' ? `
-                            <span class="btn btn-outline disabled">
-                                <i class="fas fa-lock"></i>
-                                Pronostic verrouillé
-                            </span>
-                        ` : ''}
-                        
-                        ${match.status === 'completed' && !userPrediction ? `
-                            <span class="btn btn-outline disabled">
-                                <i class="fas fa-clock"></i>
-                                Trop tard
-                            </span>
-                        ` : ''}
-                        
-                        ${match.status === 'upcoming' && new Date(match.date) <= new Date() && !userPrediction ? `
-                            <span class="btn btn-outline disabled">
-                                <i class="fas fa-hourglass-half"></i>
-                                En cours
-                            </span>
-                        ` : ''}
-                    </div>
-                </div>
-            `;
-
-            container.appendChild(matchCard);
-        });
+            return '<div class="match-card ' + (isCompleted ? 'completed-match' : '') + '">' +
+                '<div class="match-header">' +
+                    '<span class="match-tournament">' + tournamentName + '</span>' +
+                    '<div class="match-info-row">' +
+                        '<span class="match-date">' + self.formatDate(match.date) + '</span>' +
+                        (!isCompleted && canPredict ? '<span class="match-countdown" data-match-date="' + match.date + '" style="font-size:0.85rem;color:var(--primary-color);font-weight:600;">Pronostiquer avant: ' + self.formatTimeRemaining(match.date) + '</span>' : '') +
+                    '</div>' +
+                    (isCompleted ? '<span class="match-status completed"><i class="fas fa-check"></i> Termine</span>' : '') +
+                '</div>' +
+                '<div class="match-body">' +
+                    '<div class="match-teams">' +
+                        '<div class="team"><div class="team-flag">' + getTeamFlag(match.team1) + '</div><div class="team-name">' + match.team1 + '</div>' + (isCompleted ? '<div class="final-score">' + match.team1_score + '</div>' : '') + '</div>' +
+                        '<div class="vs">' + (isCompleted ? '-' : 'VS') + '</div>' +
+                        '<div class="team"><div class="team-flag">' + getTeamFlag(match.team2) + '</div><div class="team-name">' + match.team2 + '</div>' + (isCompleted ? '<div class="final-score">' + match.team2_score + '</div>' : '') + '</div>' +
+                    '</div>' +
+                    completedDisplay +
+                    predictionDisplay +
+                    '<div class="match-actions">' + actionsDisplay + '</div>' +
+                '</div>' +
+            '</div>';
+        }).join('');
     }
 
+    // === CLASSEMENT ===
     renderLeaderboard() {
-        const leaderboard = this.calculateLeaderboard();
-        const container = document.getElementById('leaderboardList');
-        container.innerHTML = '';
+        var container = document.getElementById('leaderboardList');
+        var lb = appState.leaderboard;
 
-        if (leaderboard.length === 0) {
+        if (lb.length === 0) {
             container.innerHTML = '<p class="text-center">Aucun joueur dans le classement</p>';
             return;
         }
 
-        leaderboard.forEach((user, index) => {
-            const rank = index + 1;
-            const isCurrentUser = user.id === appData.currentUser.id;
-            
-            const leaderboardItem = document.createElement('div');
-            leaderboardItem.className = `leaderboard-item ${isCurrentUser ? 'current-user' : ''}`;
-
-            let rankClass = '';
+        var currentUserId = appState.currentUser ? appState.currentUser.id : null;
+        container.innerHTML = lb.map(function(user, index) {
+            var rank = user.rank || index + 1;
+            var isCurrentUser = user.id === currentUserId;
+            var rankClass = '';
             if (rank === 1) rankClass = 'gold';
             else if (rank === 2) rankClass = 'silver';
             else if (rank === 3) rankClass = 'bronze';
 
-            leaderboardItem.innerHTML = `
-                <div class="rank ${rankClass}">
-                    ${rank <= 3 ? ['🥇', '🥈', '🥉'][rank - 1] : rank}
-                </div>
-                <div class="player-info">
-                    <div class="player-name">${user.name} ${isCurrentUser ? '(Vous)' : ''}</div>
-                    <div class="player-stats">
-                        ${user.totalPredictions} pronostic${user.totalPredictions > 1 ? 's' : ''} • 
-                        ${user.correctPredictions} correct${user.correctPredictions > 1 ? 's' : ''} • 
-                        ${user.totalPredictions > 0 ? Math.round((user.correctPredictions / user.totalPredictions) * 100) : 0}% de réussite
-                    </div>
-                </div>
-                <div class="player-points">${user.points}</div>
-            `;
+            var rankDisplay = rank <= 3 ? ['\u{1F947}', '\u{1F948}', '\u{1F949}'][rank - 1] : rank;
 
-            container.appendChild(leaderboardItem);
-        });
+            return '<div class="leaderboard-item ' + (isCurrentUser ? 'current-user' : '') + '">' +
+                '<div class="rank ' + rankClass + '">' + rankDisplay + '</div>' +
+                '<div class="player-info">' +
+                    '<div class="player-name">' + user.name + (isCurrentUser ? ' (Vous)' : '') + '</div>' +
+                    '<div class="player-stats">' +
+                        user.total_predictions + ' pronostic' + (user.total_predictions > 1 ? 's' : '') + ' \u2022 ' +
+                        (user.accuracy || 0) + '% de reussite' +
+                    '</div>' +
+                '</div>' +
+                '<div class="player-points">' + user.points + '</div>' +
+            '</div>';
+        }).join('');
     }
 
-    calculateLeaderboard() {
-        return appData.users
-            .map(user => {
-                const userPredictions = appData.predictions.filter(p => p.userId === user.id);
-                const correctPredictions = userPredictions.filter(p => p.points > 0).length;
-                const totalPoints = userPredictions.reduce((sum, p) => sum + p.points, 0);
-
-                return {
-                    ...user,
-                    points: totalPoints,
-                    totalPredictions: userPredictions.length,
-                    correctPredictions: correctPredictions
-                };
-            })
-            .sort((a, b) => {
-                if (b.points !== a.points) return b.points - a.points;
-                if (b.correctPredictions !== a.correctPredictions) return b.correctPredictions - a.correctPredictions;
-                return b.totalPredictions - a.totalPredictions;
-            });
-    }
-
-    renderAdmin() {
-        // Charger la configuration des points
-        document.getElementById('exactScorePoints').value = appData.pointsConfig.exactScore;
-        document.getElementById('correctResultPoints').value = appData.pointsConfig.correctResult;
-        document.getElementById('winnerRegularPoints').value = appData.pointsConfig.winnerRegular || 1;
-
-        // Charger les informations utilisateur SEULEMENT si on n'est pas en train de changer le nom
-        const userNameInput = document.getElementById('userNameInput');
-        if (userNameInput && !this.isChangingUserName) {
-            // Ne mettre à jour que si l'utilisateur n'est pas en train d'éditer le champ
-            if (userNameInput !== document.activeElement) {
-                userNameInput.value = appData.currentUser.name;
-            }
-        }
-        
-        // Afficher les informations de profil
-        if (appData.currentUser.createdAt) {
-            document.getElementById('memberSince').textContent = this.formatDate(appData.currentUser.createdAt);
-        } else {
-            document.getElementById('memberSince').textContent = 'Information non disponible';
-        }
-        
-        if (appData.currentUser.lastActivity) {
-            document.getElementById('lastActivity').textContent = this.formatDate(appData.currentUser.lastActivity);
-        } else {
-            document.getElementById('lastActivity').textContent = 'Information non disponible';
-        }
-
-        // Afficher les statistiques admin
-        document.getElementById('totalUsers').textContent = appData.users.length;
-        document.getElementById('totalPredictionsAdmin').textContent = appData.predictions.length;
-        document.getElementById('activeMatches').textContent = 
-            appData.matches.filter(m => m.status === 'upcoming').length;
-
-        // Afficher les matchs en attente de résultats
-        this.renderPendingMatches();
-    }
-
-    renderPendingMatches() {
-        const pendingMatches = appData.matches.filter(match => 
-            match.status === 'upcoming' && new Date(match.date) < new Date()
-        );
-
-        const container = document.getElementById('pendingMatches');
-        container.innerHTML = '';
-
-        if (pendingMatches.length === 0) {
-            container.innerHTML = '<p class="no-pending-matches">✅ Aucun match en attente de résultat</p>';
-            return;
-        }
-
-        // Ajouter un en-tête
-        const header = document.createElement('div');
-        header.className = 'pending-matches-header';
-        header.innerHTML = `
-            <h4><i class="fas fa-clock"></i> Matchs en attente de résultat (${pendingMatches.length})</h4>
-            <p>Ces matchs sont terminés mais leur score final n'a pas encore été confirmé.</p>
-        `;
-        container.appendChild(header);
-
-        pendingMatches.forEach(match => {
-            const matchDiv = document.createElement('div');
-            matchDiv.className = 'pending-match';
-            
-            // Calculer le nombre de pronostics pour ce match
-            const predictionsCount = appData.predictions.filter(p => p.matchId === match.id).length;
-            
-            matchDiv.innerHTML = `
-                <div class="pending-match-card">
-                    <div class="pending-match-info">
-                        <div class="pending-match-teams">
-                            <span class="team-flag">${getTeamFlag(match.homeTeam)}</span>
-                            <strong>${match.homeTeam} vs ${match.awayTeam}</strong>
-                            <span class="team-flag">${getTeamFlag(match.awayTeam)}</span>
-                        </div>
-                        <div class="pending-match-details">
-                            <div class="pending-match-date">
-                                <i class="fas fa-calendar"></i>
-                                ${this.formatDate(match.date)}
-                            </div>
-                            <div class="pending-match-predictions">
-                                <i class="fas fa-users"></i>
-                                ${predictionsCount} pronostic${predictionsCount !== 1 ? 's' : ''}
-                            </div>
-                        </div>
-                    </div>
-                    <div class="pending-match-actions">
-                        <div class="score-inputs-mini">
-                            <input type="number" min="0" max="20" placeholder="0" 
-                                   id="home_${match.id}" class="score-input-mini">
-                            <span class="score-separator-mini">-</span>
-                            <input type="number" min="0" max="20" placeholder="0" 
-                                   id="away_${match.id}" class="score-input-mini">
-                        </div>
-                        <button class="btn btn-success btn-confirm" onclick="uiManager.updateMatchResult('${match.id}')">
-                            <i class="fas fa-check"></i>
-                            Confirmer le score
-                        </button>
-                    </div>
-                </div>
-            `;
-            container.appendChild(matchDiv);
-        });
-
-        // Ajouter une section pour voir les matchs terminés récents
-        this.addRecentCompletedMatches(container);
-    }
-
-    addRecentCompletedMatches(parentContainer) {
-        const recentCompleted = appData.matches
-            .filter(match => match.status === 'completed')
-            .sort((a, b) => new Date(b.date) - new Date(a.date))
-            .slice(0, 3);
-
-        if (recentCompleted.length > 0) {
-            const recentSection = document.createElement('div');
-            recentSection.className = 'recent-completed-section';
-            recentSection.innerHTML = `
-                <div class="recent-completed-header">
-                    <h4><i class="fas fa-check-circle"></i> Derniers matchs confirmés</h4>
-                </div>
-                <div class="recent-completed-list">
-                    ${recentCompleted.map(match => {
-                        const predictionsCount = appData.predictions.filter(p => p.matchId === match.id).length;
-                        const pointsAwarded = appData.predictions
-                            .filter(p => p.matchId === match.id)
-                            .reduce((total, p) => total + p.points, 0);
-                        
-                        return `
-                            <div class="recent-completed-match">
-                                <div class="completed-match-info">
-                                    <div class="completed-teams">
-                                        <span class="team-flag">${getTeamFlag(match.homeTeam)}</span>
-                                        <span class="team-name">${match.homeTeam}</span>
-                                        <span class="final-score-small">${match.homeScore}</span>
-                                        <span class="vs-small">-</span>
-                                        <span class="final-score-small">${match.awayScore}</span>
-                                        <span class="team-name">${match.awayTeam}</span>
-                                        <span class="team-flag">${getTeamFlag(match.awayTeam)}</span>
-                                    </div>
-                                    <div class="completed-stats">
-                                        <span class="prediction-stat">
-                                            <i class="fas fa-users"></i>
-                                            ${predictionsCount} pronostic${predictionsCount !== 1 ? 's' : ''}
-                                        </span>
-                                        <span class="points-stat">
-                                            <i class="fas fa-trophy"></i>
-                                            ${pointsAwarded} points distribués
-                                        </span>
-                                    </div>
-                                </div>
-                            </div>
-                        `;
-                    }).join('')}
-                </div>
-            `;
-            parentContainer.appendChild(recentSection);
-        }
-    }
-
-    loadAdminValues() {
-        document.getElementById('exactScorePoints').value = appData.pointsConfig.exactScore;
-        document.getElementById('correctResultPoints').value = appData.pointsConfig.correctResult;
-        document.getElementById('goalDifferencePoints').value = appData.pointsConfig.goalDifference;
-    }
-
+    // === MODAL PRONOSTIC ===
     openPredictionModal(matchId) {
-        const match = appData.matches.find(m => m.id === matchId);
+        var match = appState.matches.find(function(m) { return m.id === matchId; });
         if (!match) return;
 
-        // Vérifier que le match n'a pas commencé
         if (new Date(match.date) <= new Date()) {
-            this.showToast('Ce match a déjà commencé, les pronostics ne sont plus acceptés', 'error');
+            this.showToast('Ce match a deja commence', 'error');
             return;
         }
 
-        const existingPrediction = appData.predictions.find(p => 
-            p.matchId === matchId && p.userId === appData.currentUser.id
-        );
+        var pred = match.userPrediction;
 
-        // Remplir les informations du modal
-        document.getElementById('modalHomeTeam').textContent = match.homeTeam;
-        document.getElementById('modalAwayTeam').textContent = match.awayTeam;
+        document.getElementById('modalHomeTeam').textContent = match.team1;
+        document.getElementById('modalAwayTeam').textContent = match.team2;
         document.getElementById('modalMatchDate').textContent = this.formatDate(match.date);
-        
-        // Changer le titre du modal selon qu'il s'agit d'une modification ou d'un nouveau pronostic
-        const modalTitle = document.getElementById('modalTitle');
-        if (modalTitle) {
-            modalTitle.textContent = existingPrediction ? 'Modifier le Pronostic' : 'Faire un Pronostic';
-        }
-        
-        // Changer le texte du bouton de soumission
-        const submitButtonText = document.getElementById('submitButtonText');
-        if (submitButtonText) {
-            submitButtonText.textContent = existingPrediction ? 'Confirmer la Modification' : 'Confirmer le Pronostic';
-        }
-        
-        // Afficher le décompte
-        const countdownElement = document.getElementById('modalCountdown');
-        if (countdownElement) {
-            countdownElement.textContent = `Temps restant: ${this.formatTimeRemaining(match.date)}`;
-            
-            // Mettre à jour le décompte toutes les secondes
-            const countdownInterval = setInterval(() => {
-                const timeRemaining = this.formatTimeRemaining(match.date);
-                countdownElement.textContent = `Temps restant: ${timeRemaining}`;
-                
-                // Arrêter si le match a commencé
-                if (timeRemaining === 'Match commencé') {
-                    clearInterval(countdownInterval);
-                    document.getElementById('closeModal').click(); // Fermer le modal
-                    this.showToast('Ce match a commencé, les pronostics sont fermés', 'warning');
-                }
-            }, 1000);
-            
-            // Stocker l'intervalle pour le nettoyer si on ferme le modal
-            document.getElementById('predictionModal').countdownInterval = countdownInterval;
+        document.getElementById('modalTitle').textContent = pred ? 'Modifier le Pronostic' : 'Faire un Pronostic';
+        document.getElementById('submitButtonText').textContent = pred ? 'Confirmer la Modification' : 'Confirmer le Pronostic';
+        document.getElementById('homeScore').value = pred ? pred.team1_score : 0;
+        document.getElementById('awayScore').value = pred ? pred.team2_score : 0;
+
+        var countdownEl = document.getElementById('modalCountdown');
+        if (countdownEl) {
+            countdownEl.textContent = 'Temps restant: ' + this.formatTimeRemaining(match.date);
         }
 
-        // Pré-remplir avec la prédiction existante
-        if (existingPrediction) {
-            document.getElementById('homeScore').value = existingPrediction.homeScore;
-            document.getElementById('awayScore').value = existingPrediction.awayScore;
-        } else {
-            document.getElementById('homeScore').value = 0;
-            document.getElementById('awayScore').value = 0;
-        }
-
-        // Stocker l'ID du match pour la soumission
         document.getElementById('predictionModal').dataset.matchId = matchId;
-        
-        // Afficher le modal
         document.getElementById('predictionModal').classList.add('active');
     }
 
     closeModal() {
-        // Nettoyer l'intervalle de décompte s'il existe
-        const modal = document.getElementById('predictionModal');
-        if (modal.countdownInterval) {
-            clearInterval(modal.countdownInterval);
-            modal.countdownInterval = null;
-        }
-        modal.classList.remove('active');
+        document.getElementById('predictionModal').classList.remove('active');
     }
 
-    submitPrediction() {
-        const matchId = document.getElementById('predictionModal').dataset.matchId;
-        const homeScore = parseInt(document.getElementById('homeScore').value || 0, 10);
-        const awayScore = parseInt(document.getElementById('awayScore').value || 0, 10);
+    async submitPrediction() {
+        var matchId = document.getElementById('predictionModal').dataset.matchId;
+        var homeScore = parseInt(document.getElementById('homeScore').value || 0, 10);
+        var awayScore = parseInt(document.getElementById('awayScore').value || 0, 10);
 
         if (isNaN(homeScore) || isNaN(awayScore) || homeScore < 0 || awayScore < 0) {
             this.showToast('Veuillez entrer des scores valides', 'error');
             return;
         }
 
-        // Vérifier si une prédiction existe déjà
-        const existingPredictionIndex = appData.predictions.findIndex(p => 
-            p.matchId === matchId && p.userId === appData.currentUser.id
-        );
-
-        const prediction = {
-            id: existingPredictionIndex >= 0 ? appData.predictions[existingPredictionIndex].id : 'pred_' + Date.now(),
-            matchId: matchId,
-            userId: appData.currentUser.id,
-            homeScore: homeScore,
-            awayScore: awayScore,
-            date: new Date().toISOString(),
-            points: 0
-        };
-
-        if (existingPredictionIndex >= 0) {
-            appData.predictions[existingPredictionIndex] = prediction;
-            this.showToast('Pronostic modifié avec succès !', 'success');
-        } else {
-            appData.predictions.push(prediction);
-            this.showToast('Pronostic enregistré avec succès !', 'success');
+        try {
+            await apiClient.createPrediction(matchId, homeScore, awayScore);
+            this.showToast('Pronostic enregistre !', 'success');
+            this.closeModal();
+            await this.loadAllData();
+        } catch (error) {
+            this.showToast(error.message, 'error');
         }
-
-        appData.savePredictions();
-        this.closeModal();
-        this.updateUI();
     }
 
-    addNewMatch() {
-        const homeTeam = document.getElementById('homeTeam').value.trim();
-        const awayTeam = document.getElementById('awayTeam').value.trim();
-        const matchDate = document.getElementById('matchDate').value;
-        const tournament = document.getElementById('matchTournament').value;
+    // === ADMIN ===
+    renderAdmin() {
+        if (!appState.isAdmin) return;
 
-        if (!homeTeam || !awayTeam || !matchDate) {
+        var user = appState.currentUser;
+        var userNameInput = document.getElementById('userNameInput');
+        if (userNameInput) userNameInput.value = user.name;
+
+        document.getElementById('memberSince').textContent = user.created_at ? this.formatDate(user.created_at) : '-';
+        document.getElementById('lastActivity').textContent = user.last_activity ? this.formatDate(user.last_activity) : '-';
+
+        document.getElementById('totalUsers').textContent = appState.leaderboard.length;
+        document.getElementById('totalPredictionsAdmin').textContent = appState.leaderboard.reduce(function(s, u) { return s + u.total_predictions; }, 0);
+        document.getElementById('activeMatches').textContent = appState.matches.filter(function(m) { return m.status !== 'completed'; }).length;
+
+        this.renderPendingMatches();
+    }
+
+    renderPendingMatches() {
+        var pendingMatches = appState.matches.filter(function(m) {
+            return m.status !== 'completed' && new Date(m.date) < new Date();
+        });
+
+        var container = document.getElementById('pendingMatches');
+        if (pendingMatches.length === 0) {
+            container.innerHTML = '<p class="no-pending-matches">\u2705 Aucun match en attente de resultat</p>';
+            return;
+        }
+
+        var self = this;
+        container.innerHTML = '<div class="pending-matches-header"><h4><i class="fas fa-clock"></i> Matchs en attente (' + pendingMatches.length + ')</h4></div>' +
+            pendingMatches.map(function(match) {
+                return '<div class="pending-match"><div class="pending-match-card">' +
+                    '<div class="pending-match-info">' +
+                        '<div class="pending-match-teams">' +
+                            '<span class="team-flag">' + getTeamFlag(match.team1) + '</span>' +
+                            '<strong>' + match.team1 + ' vs ' + match.team2 + '</strong>' +
+                            '<span class="team-flag">' + getTeamFlag(match.team2) + '</span>' +
+                        '</div>' +
+                        '<div class="pending-match-details"><div class="pending-match-date"><i class="fas fa-calendar"></i> ' + self.formatDate(match.date) + '</div></div>' +
+                    '</div>' +
+                    '<div class="pending-match-actions">' +
+                        '<div class="score-inputs-mini">' +
+                            '<input type="number" min="0" max="20" placeholder="0" id="home_' + match.id + '" class="score-input-mini">' +
+                            '<span class="score-separator-mini">-</span>' +
+                            '<input type="number" min="0" max="20" placeholder="0" id="away_' + match.id + '" class="score-input-mini">' +
+                        '</div>' +
+                        '<button class="btn btn-success btn-confirm" onclick="uiManager.updateMatchResult(\'' + match.id + '\')">' +
+                            '<i class="fas fa-check"></i> Confirmer' +
+                        '</button>' +
+                    '</div>' +
+                '</div></div>';
+            }).join('');
+    }
+
+    async addNewMatch() {
+        var team1 = document.getElementById('homeTeam').value.trim();
+        var team2 = document.getElementById('awayTeam').value.trim();
+        var date = document.getElementById('matchDate').value;
+        var tournament = document.getElementById('matchTournament').value;
+
+        if (!team1 || !team2 || !date) {
             this.showToast('Veuillez remplir tous les champs', 'error');
             return;
         }
 
-        const newMatch = {
-            id: 'match_' + Date.now(),
-            homeTeam: homeTeam,
-            awayTeam: awayTeam,
-            date: matchDate,
-            tournament: tournament,
-            status: 'upcoming',
-            homeScore: null,
-            awayScore: null
-        };
-
-        appData.matches.push(newMatch);
-        appData.saveMatches();
-
-        // Réinitialiser le formulaire
-        document.getElementById('addMatchForm').reset();
-        
-        this.showToast('Match ajouté avec succès !', 'success');
-        this.renderMatches();
-        this.renderAdmin();
+        try {
+            await apiClient.createMatch({
+                team1: team1, team2: team2, date: date, tournament: tournament,
+                team1_flag: getTeamFlag(team1),
+                team2_flag: getTeamFlag(team2)
+            });
+            document.getElementById('addMatchForm').reset();
+            this.showToast('Match ajoute !', 'success');
+            await this.loadAllData();
+        } catch (error) {
+            this.showToast(error.message, 'error');
+        }
     }
 
-    updateMatchResult(matchId) {
-        const homeScoreInput = document.getElementById(`home_${matchId}`);
-        const awayScoreInput = document.getElementById(`away_${matchId}`);
-        
-        // Utiliser parseInt pour convertir en entier
-        const homeScore = parseInt(homeScoreInput.value || 0, 10);
-        const awayScore = parseInt(awayScoreInput.value || 0, 10);
-        
-        console.log('[DEBUG] updateMatchResult:', {
-            homeScore: homeScore,
-            awayScore: awayScore,
-            homeScoreValid: !isNaN(homeScore) && homeScore >= 0,
-            awayScoreValid: !isNaN(awayScore) && awayScore >= 0
-        });
+    async updateMatchResult(matchId) {
+        var homeScore = parseInt(document.getElementById('home_' + matchId).value || 0, 10);
+        var awayScore = parseInt(document.getElementById('away_' + matchId).value || 0, 10);
 
-        // Vérifier que les scores sont valides (nombres entiers positifs ou zéro)
         if (isNaN(homeScore) || isNaN(awayScore) || homeScore < 0 || awayScore < 0) {
-            console.log('[DEBUG] Validation échouée - scores invalides');
-            this.showToast('Veuillez entrer des scores valides (nombres positifs)', 'error');
+            this.showToast('Scores invalides', 'error');
             return;
         }
 
-        console.log('[DEBUG] Validation réussie - Mise à jour du match');
-        
-        // Mettre à jour le match
-        const matchIndex = appData.matches.findIndex(m => m.id === matchId);
-        if (matchIndex === -1) {
-            console.log('[DEBUG] Match non trouvé');
+        try {
+            await apiClient.updateMatchScore(matchId, homeScore, awayScore);
+            this.showToast('Resultat mis a jour !', 'success');
+            await this.loadAllData();
+        } catch (error) {
+            this.showToast(error.message, 'error');
+        }
+    }
+
+    async changeUserName() {
+        var newName = document.getElementById('userNameInput').value.trim();
+        if (!newName) {
+            this.showToast('Le pseudonyme ne peut pas etre vide', 'error');
+            return;
+        }
+        if (newName === appState.currentUser.name) {
+            this.showToast('Le pseudonyme est identique', 'warning');
             return;
         }
 
-        appData.matches[matchIndex].homeScore = homeScore;
-        appData.matches[matchIndex].awayScore = awayScore;
-        appData.matches[matchIndex].status = 'completed';
-
-        // Calculer les points pour toutes les prédictions de ce match
-        this.calculatePredictionPoints(matchId, homeScore, awayScore);
-
-        appData.saveMatches();
-        this.showToast('Résultat mis à jour avec succès !', 'success');
-        this.updateUI();
-    }
-
-    calculatePredictionPoints(matchId, actualHomeScore, actualAwayScore) {
-        const matchPredictions = appData.predictions.filter(p => p.matchId === matchId);
-        const match = appData.matches.find(m => m.id === matchId);
-        const actualResult = this.getMatchResult(actualHomeScore, actualAwayScore);
-        
-        // Vérifier si c'est un tournoi de phase finale
-        const isFinalPhase = CONFIG.finalPhasesTournaments.includes(match.tournament);
-
-        matchPredictions.forEach(prediction => {
-            const predictedResult = this.getMatchResult(prediction.homeScore, prediction.awayScore);
-            
-            let points = 0;
-
-            // Score exact
-            if (prediction.homeScore === actualHomeScore && prediction.awayScore === actualAwayScore) {
-                points = appData.pointsConfig.exactScore;
-            }
-            // Bon résultat (victoire, nul, défaite)
-            else if (predictedResult === actualResult) {
-                points = appData.pointsConfig.correctResult;
-            }
-            // Pour les phases finales : vainqueur après temps réglementaire
-            else if (isFinalPhase && predictedResult === actualResult && actualResult !== 'nul') {
-                points = appData.pointsConfig.winnerRegular || 1;
-            }
-
-            prediction.points = points;
-
-            // Mettre à jour les stats de l'utilisateur
-            const user = appData.users.find(u => u.id === prediction.userId);
-            if (user) {
-                if (prediction.userId === appData.currentUser.id) {
-                    appData.currentUser.points = appData.predictions
-                        .filter(p => p.userId === appData.currentUser.id)
-                        .reduce((sum, p) => sum + p.points, 0);
-                    appData.saveUser();
-                }
-            }
-        });
-
-        appData.savePredictions();
-        appData.updateUserInList();
-    }
-
-    getMatchResult(homeScore, awayScore) {
-        if (homeScore > awayScore) return 'home';
-        if (awayScore > homeScore) return 'away';
-        return 'draw';
-    }
-
-    getPredictionAccuracyText(prediction, match) {
-        // Score exact
-        if (prediction.homeScore === match.homeScore && prediction.awayScore === match.awayScore) {
-            return '🎯 Score exact !';
+        try {
+            var data = await apiClient.updateUserName(appState.currentUser.id, newName);
+            appState.currentUser.name = data.user.name;
+            this.updateHeader();
+            this.showToast('Pseudonyme modifie !', 'success');
+        } catch (error) {
+            this.showToast(error.message, 'error');
         }
-        
-        const predictedResult = this.getMatchResult(prediction.homeScore, prediction.awayScore);
-        const actualResult = this.getMatchResult(match.homeScore, match.awayScore);
-        
-        // Bon résultat
-        if (predictedResult === actualResult) {
-            const resultText = actualResult === 'home' ? 'victoire domicile' : 
-                              actualResult === 'away' ? 'victoire extérieur' : 'match nul';
-            return `✅ Bon résultat (${resultText})`;
-        }
-        
-        // Bonne différence de buts
-        const predictedDiff = Math.abs(prediction.homeScore - prediction.awayScore);
-        const actualDiff = Math.abs(match.homeScore - match.awayScore);
-        if (predictedDiff === actualDiff) {
-            return `📊 Bonne différence de buts (${actualDiff})`;
-        }
-        
-        return '';
     }
 
-    savePointsConfiguration() {
-        const exactScore = parseInt(document.getElementById('exactScorePoints').value);
-        const correctResult = parseInt(document.getElementById('correctResultPoints').value);
-        const winnerRegular = parseInt(document.getElementById('winnerRegularPoints').value);
-
-        if (isNaN(exactScore) || isNaN(correctResult) || isNaN(winnerRegular)) {
-            this.showToast('Veuillez entrer des valeurs valides', 'error');
-            return;
-        }
-
-        appData.pointsConfig = {
-            exactScore: exactScore,
-            correctResult: correctResult,
-            winnerRegular: winnerRegular
-        };
-
-        appData.savePointsConfig();
-        this.showToast('Configuration sauvegardée !', 'success');
-    }
-
+    // === UTILITAIRES ===
     formatDate(dateString) {
-        const date = new Date(dateString);
-        return date.toLocaleDateString('fr-FR', {
-            weekday: 'long',
-            year: 'numeric',
-            month: 'long',
-            day: 'numeric',
-            hour: '2-digit',
-            minute: '2-digit'
+        return new Date(dateString).toLocaleDateString('fr-FR', {
+            weekday: 'long', year: 'numeric', month: 'long', day: 'numeric',
+            hour: '2-digit', minute: '2-digit'
         });
     }
 
-    // Formater le temps restant avant un match (pour le décompte)
     formatTimeRemaining(matchDateString) {
-        const now = new Date();
-        const matchDate = new Date(matchDateString);
-        const diffMs = matchDate - now;
+        var diffMs = new Date(matchDateString) - new Date();
+        if (diffMs <= 0) return 'Match commence';
 
-        if (diffMs <= 0) {
-            return 'Match commencé';
-        }
+        var s = Math.floor(diffMs / 1000);
+        var m = Math.floor(s / 60);
+        var h = Math.floor(m / 60);
+        var d = Math.floor(h / 24);
 
-        const diffSeconds = Math.floor(diffMs / 1000);
-        const diffMinutes = Math.floor(diffSeconds / 60);
-        const diffHours = Math.floor(diffMinutes / 60);
-        const diffDays = Math.floor(diffHours / 24);
-
-        if (diffDays > 0) {
-            return `${diffDays}j ${diffHours % 24}h`;
-        } else if (diffHours > 0) {
-            return `${diffHours}h ${diffMinutes % 60}m`;
-        } else if (diffMinutes > 0) {
-            return `${diffMinutes}m ${diffSeconds % 60}s`;
-        } else {
-            return `${diffSeconds}s`;
-        }
+        if (d > 0) return d + 'j ' + (h % 24) + 'h';
+        if (h > 0) return h + 'h ' + (m % 60) + 'm';
+        if (m > 0) return m + 'm ' + (s % 60) + 's';
+        return s + 's';
     }
 
-    // Démarrer la mise à jour périodique des décomptes dans les cartes de matchs
     startCountdownUpdates() {
-        if (this.countdownUpdateInterval) {
-            clearInterval(this.countdownUpdateInterval);
-        }
-
-        this.countdownUpdateInterval = setInterval(() => {
-            this.updateCountdownsInCards();
-        }, 1000); // Mettre à jour chaque seconde
+        if (this.countdownInterval) clearInterval(this.countdownInterval);
+        var self = this;
+        this.countdownInterval = setInterval(function() {
+            document.querySelectorAll('.match-countdown[data-match-date]').forEach(function(el) {
+                var date = el.dataset.matchDate;
+                if (date) el.textContent = 'Pronostiquer avant: ' + self.formatTimeRemaining(date);
+            });
+        }, 1000);
     }
 
-    // Mettre à jour les décomptes affichés dans les cartes de matchs
-    updateCountdownsInCards() {
-        // Chercher tous les éléments de décompte dans les cartes
-        const countdownElements = document.querySelectorAll('.match-countdown');
-        
-        countdownElements.forEach(element => {
-            // Récupérer l'ID du match depuis l'attribut data
-            const matchCard = element.closest('.match-card');
-            if (!matchCard) return;
-
-            // Trouver le match correspondant
-            let matchId = null;
-            const matchButton = matchCard.querySelector('[onclick*="openPredictionModal"]');
-            if (matchButton) {
-                const onclickStr = matchButton.getAttribute('onclick');
-                const match = onclickStr.match(/openPredictionModal\('([^']+)'\)/);
-                if (match) matchId = match[1];
-            }
-
-            if (!matchId) return;
-
-            const currentMatch = appData.matches.find(m => m.id === matchId);
-            if (!currentMatch) return;
-
-            // Vérifier si le match est toujours à venir et peut recevoir des pronostics
-            const isUpcoming = currentMatch.status === 'upcoming';
-            const canPredict = isUpcoming && new Date(currentMatch.date) > new Date();
-
-            if (isUpcoming && canPredict) {
-                // Mettre à jour le texte du décompte
-                element.textContent = `Pronostiquer avant: ${this.formatTimeRemaining(currentMatch.date)}`;
-            } else if (isUpcoming && !canPredict) {
-                // Le match a commencé
-                element.textContent = 'Match commencé';
-                element.style.color = 'var(--error-color)'; // Couleur rouge
-            }
-        });
-    }
-
-    // Arrêter la mise à jour périodique des décomptes
-    stopCountdownUpdates() {
-        if (this.countdownUpdateInterval) {
-            clearInterval(this.countdownUpdateInterval);
-            this.countdownUpdateInterval = null;
-        }
-    }
-
-    showToast(message, type = 'success') {
-        const toast = document.createElement('div');
-        toast.className = `toast ${type}`;
-        
-        const icon = type === 'success' ? 'check-circle' : 
-                    type === 'error' ? 'exclamation-circle' : 'info-circle';
-        
-        toast.innerHTML = `
-            <i class="fas fa-${icon} toast-icon"></i>
-            <span class="toast-message">${message}</span>
-        `;
-
+    showToast(message, type) {
+        type = type || 'success';
+        var toast = document.createElement('div');
+        toast.className = 'toast ' + type;
+        var icon = type === 'success' ? 'check-circle' : type === 'error' ? 'exclamation-circle' : 'info-circle';
+        toast.innerHTML = '<i class="fas fa-' + icon + ' toast-icon"></i><span class="toast-message">' + this.escapeHtml(message) + '</span>';
         document.getElementById('toastContainer').appendChild(toast);
-
-        // Animer l'apparition
-        setTimeout(() => toast.classList.add('show'), 100);
-
-        // Supprimer après 3 secondes
-        setTimeout(() => {
+        setTimeout(function() { toast.classList.add('show'); }, 100);
+        setTimeout(function() {
             toast.classList.remove('show');
-            setTimeout(() => toast.remove(), 300);
+            setTimeout(function() { toast.remove(); }, 300);
         }, 3000);
     }
 
-    // === AUTHENTIFICATION ===
-    showContent(sectionName) {
-        console.log('[DEBUG] showContent appelé avec:', sectionName);
-        
-        if (sectionName === 'auth') {
-            // Afficher la section d'authentification
-            console.log('[DEBUG] Affichage interface authentification');
-            const authSection = document.getElementById('auth');
-            const nav = document.querySelector('nav');
-            const main = document.querySelector('.main');
-            const header = document.querySelector('.header');
-            
-            if (authSection) authSection.style.display = 'block';
-            if (nav) nav.style.display = 'none';
-            if (main) main.style.display = 'none';
-            // Garder le header visible pour naviguer
-            if (header) header.style.display = 'block';
-            
-            // Initialiser les écouteurs d'authentification
-            setTimeout(() => {
-                this.initializeAuthListeners();
-            }, 10);
-        } else {
-            // Afficher l'application principale
-            console.log('[DEBUG] Affichage application principale:', sectionName);
-            const authSection = document.getElementById('auth');
-            const nav = document.querySelector('nav');
-            const main = document.querySelector('.main');
-            const header = document.querySelector('.header');
-            
-            if (authSection) authSection.style.display = 'none';
-            if (nav) nav.style.display = 'block';
-            if (main) main.style.display = 'block';
-            if (header) header.style.display = 'block';
-            
-            // Aller à l'onglet spécifié ou dashboard par défaut
-            this.switchTab(sectionName || 'dashboard');
-        }
-    }
-
-    initializeHeaderListeners() {
-        console.log('[DEBUG] Initialisation des écouteurs header...');
-        
-        // Bouton de connexion dans le header
-        const loginHeaderBtn = document.getElementById('loginHeaderBtn');
-        console.log('[DEBUG] loginHeaderBtn trouvé:', !!loginHeaderBtn);
-        
-        if (loginHeaderBtn && !loginHeaderBtn.hasAttribute('data-listener-attached')) {
-            loginHeaderBtn.addEventListener('click', (e) => {
-                console.log('[DEBUG] Clic sur loginHeaderBtn');
-                e.preventDefault();
-                e.stopPropagation();
-                this.showContent('auth');
-            });
-            loginHeaderBtn.setAttribute('data-listener-attached', 'true');
-            console.log('[DEBUG] Écouteur ajouté sur loginHeaderBtn');
-        }
-        
-        // Bouton de déconnexion
-        const logoutBtn = document.getElementById('logoutBtn');
-        if (logoutBtn && !logoutBtn.hasAttribute('data-listener-attached')) {
-            logoutBtn.addEventListener('click', (e) => {
-                console.log('[DEBUG] Clic sur logoutBtn');
-                e.preventDefault();
-                // Nettoyer les données si nécessaire
-                this.showContent('auth');
-            });
-            logoutBtn.setAttribute('data-listener-attached', 'true');
-        }
-    }
-
-    initializeAuthListeners() {
-        console.log('[DEBUG] Initialisation des écouteurs d\'authentification...');
-        const loginBtn = document.getElementById('loginBtn');
-        const userNameInput = document.getElementById('authUserName');
-        const emailInput = document.getElementById('authEmail');
-
-        console.log('[DEBUG] Elements trouvés - loginBtn:', !!loginBtn, 'userNameInput:', !!userNameInput, 'emailInput:', !!emailInput);
-
-        if (loginBtn && !loginBtn.hasAttribute('data-listener-attached')) {
-            loginBtn.setAttribute('data-listener-attached', 'true');
-            loginBtn.addEventListener('click', async (e) => {
-                console.log('[DEBUG] Clic détecté sur bouton login');
-                e.preventDefault();
-                
-                const username = userNameInput ? userNameInput.value.trim() : '';
-                const email = emailInput ? emailInput.value.trim() : '';
-                
-                if (!username) {
-                    this.showToast('Veuillez entrer un pseudonyme', 'error');
-                    return;
-                }
-                
-                console.log('[DEBUG] Tentative de connexion avec:', username);
-                
-                try {
-                    // Sauvegarder l'utilisateur en local pour l'instant
-                    appData.currentUser.name = username;
-                    appData.currentUser.email = email;
-                    appData.currentUser.lastActivity = new Date().toISOString();
-                    appData.saveUser();
-                    
-                    this.updateHeader();
-                    this.showContent('dashboard');
-                    this.showToast(`Bienvenue ${username} !`, 'success');
-                    
-                    console.log('[DEBUG] Connexion réussie');
-                } catch (error) {
-                    console.error('[DEBUG] Erreur de connexion:', error);
-                    this.showToast('Erreur de connexion', 'error');
-                }
-            });
-        }
-    }
-
-    updateHeaderAuth() {
-        console.log('[DEBUG] Mise à jour affichage authentification');
-        const authenticatedUser = document.getElementById('authenticated-user');
-        const guestUser = document.getElementById('guest-user');
-        
-        if (authenticatedUser && guestUser) {
-            if (appData.currentUser && appData.currentUser.name) {
-                authenticatedUser.style.display = 'flex';
-                guestUser.style.display = 'none';
-            } else {
-                authenticatedUser.style.display = 'none';
-                guestUser.style.display = 'block';
-            }
-        }
+    escapeHtml(text) {
+        var div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
     }
 }
 
-// Initialisation de l'application
-let uiManager;
+// --- Initialisation ---
+var uiManager;
 
-document.addEventListener('DOMContentLoaded', () => {
-    console.log('🚀 Démarrage de l\'application...');
-    console.log('📦 Version: 2.0 - Correction uiManager global');
-    
-    // Créer l'instance UIManager
+document.addEventListener('DOMContentLoaded', function() {
     uiManager = new UIManager();
-    
-    // Rendre uiManager accessible globalement
     window.uiManager = uiManager;
-    console.log('✅ uiManager rendu global:', !!window.uiManager);
-    
-    // Initialiser les écouteurs du header immédiatement
-    console.log('[DEBUG] Appel initializeHeaderListeners...');
-    uiManager.initializeHeaderListeners();
-    
-    // Mettre à jour l'affichage d'authentification
-    console.log('[DEBUG] Appel updateHeaderAuth...');
-    uiManager.updateHeaderAuth();
-    
-    // S'assurer que le header est correctement initialisé
-    setTimeout(() => {
-        console.log('🔄 Initialisation finale du header');
-        uiManager.updateHeader();
-    }, 200);
-    
-    // Vérifier si c'est la première visite
-    if (!localStorage.getItem('currentUser')) {
-        const userName = prompt('🎉 Bienvenue dans Pronostics Football !\n\nVeuillez choisir votre pseudonyme :') || 'Joueur';
-        appData.currentUser.name = userName.trim();
-        appData.currentUser.createdAt = new Date().toISOString();
-        appData.currentUser.lastActivity = new Date().toISOString();
-        appData.saveUser();
-        appData.updateUserInList();
-        uiManager.updateHeader();
-        uiManager.showToast(`Bienvenue ${userName} ! 🎊`, 'success');
-    } else {
-        // Mettre à jour la dernière activité
-        appData.currentUser.lastActivity = new Date().toISOString();
-        appData.saveUser();
-    }
-    
-    // Test pour vérifier que les nouvelles fonctionnalités sont chargées
-    setTimeout(() => {
-        const userNameElement = document.getElementById('userName');
-        if (userNameElement && userNameElement.onclick) {
-            console.log('✅ Pseudonyme cliquable activé');
-        } else {
-            console.warn('⚠️ Problème avec le pseudonyme cliquable');
-        }
-        
-        // Test des drapeaux
-        const testFlag = getTeamFlag('France');
-        if (testFlag === '🇫🇷') {
-            console.log('✅ Système de drapeaux actif');
-        } else {
-            console.warn('⚠️ Problème avec les drapeaux');
-        }
-    }, 1000);
+    uiManager.init();
 });
 
-// Service Worker pour PWA
+// Service Worker
 if ('serviceWorker' in navigator) {
-    window.addEventListener('load', () => {
-        navigator.serviceWorker.register('sw.js')
-            .then(registration => {
-                console.log('SW registered: ', registration);
-            })
-            .catch(registrationError => {
-                console.log('SW registration failed: ', registrationError);
-            });
+    window.addEventListener('load', function() {
+        navigator.serviceWorker.register('sw.js').catch(function() {});
     });
 }

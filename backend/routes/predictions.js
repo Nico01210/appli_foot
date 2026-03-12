@@ -59,6 +59,12 @@ router.post('/', authenticateToken, async (req, res) => {
             });
         }
 
+        if (new Date(match.date) <= new Date()) {
+            return res.status(400).json({ 
+                error: 'Le match a déjà commencé, pronostic impossible' 
+            });
+        }
+
         // Vérifier si une prédiction existe déjà
         const existingPrediction = await Prediction.findByUserAndMatch(user_id, match_id);
         

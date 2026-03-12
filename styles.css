@@ -26,6 +26,31 @@
     --border-radius: 8px;
     --border-radius-lg: 12px;
     --transition: all 0.2s ease-in-out;
+    --accent-color: #8b5cf6;
+    --text-tertiary: #d1d5db;
+    --success-color-rgb: 5, 150, 105;
+    --card-bg: #ffffff;
+    --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+    --input-bg: #ffffff;
+}
+
+@media (prefers-color-scheme: dark) {
+    :root {
+        --text-primary: #f3f4f6;
+        --text-secondary: #9ca3af;
+        --text-light: #6b7280;
+        --text-tertiary: #4b5563;
+        --bg-primary: #111827;
+        --bg-secondary: #1f2937;
+        --bg-tertiary: #374151;
+        --border-color: #374151;
+        --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.3);
+        --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.4);
+        --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.5);
+        --card-bg: #1f2937;
+        --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.4);
+        --input-bg: #374151;
+    }
 }
 
 body {
@@ -1701,6 +1726,32 @@ select:focus {
 .auth-header p {
     color: var(--text-secondary);
     margin-bottom: 2rem;
+}
+
+.auth-tabs {
+    display: flex;
+    gap: 0;
+    margin-bottom: 1.5rem;
+    border-radius: 0.5rem;
+    overflow: hidden;
+    border: 2px solid var(--primary-color);
+}
+
+.auth-tab {
+    flex: 1;
+    padding: 0.75rem 1rem;
+    border: none;
+    background: transparent;
+    color: var(--primary-color);
+    font-weight: 600;
+    font-size: 1rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.auth-tab.active {
+    background: var(--primary-color);
+    color: white;
 }
 
 .auth-form {

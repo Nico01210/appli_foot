@@ -84,6 +84,13 @@ function initializeDatabase() {
         VALUES (1, 3, 1, 0)
     `);
 
+    // Indexes pour performances
+    db.run('CREATE INDEX IF NOT EXISTS idx_predictions_user_id ON predictions(user_id)');
+    db.run('CREATE INDEX IF NOT EXISTS idx_predictions_match_id ON predictions(match_id)');
+    db.run('CREATE INDEX IF NOT EXISTS idx_matches_status ON matches(status)');
+    db.run('CREATE INDEX IF NOT EXISTS idx_matches_date ON matches(date)');
+    db.run('CREATE INDEX IF NOT EXISTS idx_users_email ON users(email)');
+
     console.log('📊 Tables de base de données initialisées');
 }
 

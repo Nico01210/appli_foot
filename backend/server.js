@@ -3,6 +3,11 @@ const cors = require('cors');
 const bodyParser = require('body-parser');
 const path = require('path');
 
+// Security middleware (install with: npm install helmet express-rate-limit)
+let helmet, rateLimit;
+try { helmet = require('helmet'); } catch(e) { helmet = null; }
+try { rateLimit = require('express-rate-limit'); } catch(e) { rateLimit = null; }
+
 // Import routes
 const authRoutes = require('./routes/auth');
 const userRoutes = require('./routes/users');
@@ -16,9 +21,20 @@ const db = require('./models/database');
 const app = express();
 const PORT = process.env.PORT || 3001;
 
+// Security headers
+if (helmet) {
+    app.use(helmet({ contentSecurityPolicy: false }));
+}
+
+// Rate limiting
+if (rateLimit) {
+    app.use('/api/', rateLimit({ windowMs: 15 * 60 * 1000, max: 200 }));
+    app.use('/api/auth', rateLimit({ windowMs: 15 * 60 * 1000, max: 20 }));
+}
+
 // Middleware
 app.use(cors());
-app.use(bodyParser.json());
+app.use(bodyParser.json({ limit: '1mb' }));
 app.use(bodyParser.urlencoded({ extended: true }));
 
 // Routes

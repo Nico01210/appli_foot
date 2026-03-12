@@ -1,9 +1,11 @@
-const CACHE_NAME = 'pronostics-football-v1.3';
+const CACHE_NAME = 'pronostics-football-v3.0';
 const urlsToCache = [
   './',
   './index.html',
-  './styles.css?v=1.3',
-  './app.js?v=1.3',
+  './styles.css?v=3.0',
+  './api-client.js?v=3.0',
+  './app.js?v=3.0',
+  './icon.svg',
   './manifest.json',
   'https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap',
   'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css'
@@ -38,6 +40,12 @@ self.addEventListener('activate', event => {
 
 // Interception des requêtes
 self.addEventListener('fetch', event => {
+  // Ne pas mettre en cache les requêtes API
+  if (event.request.url.includes('/api/')) {
+    event.respondWith(fetch(event.request));
+    return;
+  }
+
   event.respondWith(
     caches.match(event.request)
       .then(response => {

@@ -5,53 +5,66 @@ const jwt = require('jsonwebtoken');
 
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-in-production';
 
-// Route de connexion/création d'utilisateur
-router.post('/login', async (req, res) => {
+// Route d'inscription
+router.post('/register', async (req, res) => {
     try {
-        const { name, email } = req.body;
+        const { name, email, password } = req.body;
 
-        if (!name) {
-            return res.status(400).json({ error: 'Le nom est requis' });
+        if (!name || !email || !password) {
+            return res.status(400).json({ error: 'Nom, email et mot de passe sont requis' });
         }
 
-        let user;
-
-        // Si email fourni, chercher par email
-        if (email) {
-            user = await User.findByEmail(email);
-            if (user) {
-                // Mettre à jour le nom si différent
-                if (user.name !== name) {
-                    await User.updateName(user.id, name);
-                    user.name = name;
-                }
-            } else {
-                // Créer un nouvel utilisateur avec email
-                user = await User.create({ name, email });
-            }
-        } else {
-            // Mode sans email (comme actuellement)
-            // Chercher par nom ou créer
-            const users = await User.findAll();
-            user = users.find(u => u.name === name);
-            
-            if (!user) {
-                user = await User.create({ name });
-            }
+        if (password.length < 4) {
+            return res.status(400).json({ error: 'Le mot de passe doit faire au moins 4 caractères' });
         }
 
-        // Générer un token JWT
+        // Vérifier si l'email est déjà utilisé
+        const existing = await User.findByEmail(email);
+        if (existing) {
+            return res.status(409).json({ error: 'Cet email est déjà utilisé' });
+        }
+
+        const user = await User.create({ name, email, password });
+
         const token = jwt.sign(
-            { userId: user.id, name: user.name },
+            { userId: user.id, name: user.name, isAdmin: user.is_admin ? true : false },
             JWT_SECRET,
             { expiresIn: '7d' }
         );
 
-        res.json({
-            user: user.toPublic(),
-            token
-        });
+        res.status(201).json({ user: user.toPublic(), token });
+    } catch (error) {
+        console.error('Erreur lors de l\'inscription:', error);
+        res.status(500).json({ error: 'Erreur serveur lors de l\'inscription' });
+    }
+});
 
+// Route de connexion
+router.post('/login', async (req, res) => {
+    try {
+        const { email, password } = req.body;
+
+        if (!email || !password) {
+            return res.status(400).json({ error: 'Email et mot de passe sont requis' });
+        }
+
+        const user = await User.findByEmail(email);
+        if (!user) {
+            return res.status(401).json({ error: 'Email ou mot de passe incorrect' });
+        }
+
+        const valid = await user.verifyPassword(password);
+        if (!valid) {
+            return res.status(401).json({ error: 'Email ou mot de passe incorrect' });
+        }
+
+        const token = jwt.sign(
+            { userId: user.id, name: user.name, isAdmin: user.is_admin ? true : false },
+            JWT_SECRET,
+            { expiresIn: '7d' }
+        );
+
+        res.json({ user: user.toPublic(), token });
     } catch (error) {
         console.error('Erreur lors de la connexion:', error);
         res.status(500).json({ error: 'Erreur serveur lors de la connexion' });
@@ -91,5 +104,14 @@ function authenticateToken(req, res, next) {
     });
 }
 
+// Middleware d'autorisation admin
+function requireAdmin(req, res, next) {
+    if (!req.user || !req.user.isAdmin) {
+        return res.status(403).json({ error: 'Accès réservé aux administrateurs' });
+    }
+    next();
+}
+
 module.exports = router;
 module.exports.authenticateToken = authenticateToken;
+module.exports.requireAdmin = requireAdmin;
