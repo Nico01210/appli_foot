@@ -13,7 +13,7 @@
     <link rel="apple-touch-icon" href="icon.svg">
     
     <!-- CSS -->
-    <link rel="stylesheet" href="styles.css?v=3.0">
+    <link rel="stylesheet" href="styles.css?v=3.1">
     
     <!-- Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
@@ -29,6 +29,11 @@
                     Pronostics Football
                 </h1>
                 <div class="user-info">
+                    <button id="themeToggleBtn" class="btn theme-toggle-btn" title="Changer le theme" aria-label="Changer le theme">
+                        <i id="themeToggleIcon" class="fas fa-moon"></i>
+                        <span id="themeToggleText">Sombre</span>
+                    </button>
+
                     <!-- Affiché quand l'utilisateur est connecté -->
                     <div id="authenticated-user" style="display: none;">
                         <span class="user-name" id="userName" title="Votre pseudonyme">Joueur</span>
@@ -500,7 +505,7 @@
     <div id="toastContainer" class="toast-container"></div>
 
     <!-- JavaScript -->
-    <script src="api-client.js?v=3.0"></script>
-    <script src="app.js?v=3.0"></script>
+    <script src="api-client.js?v=3.1"></script>
+    <script src="app.js?v=3.1"></script>
 </body>
 </html>

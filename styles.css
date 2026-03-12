@@ -53,6 +53,40 @@
     }
 }
 
+:root[data-theme='dark'] {
+    --text-primary: #f3f4f6;
+    --text-secondary: #9ca3af;
+    --text-light: #6b7280;
+    --text-tertiary: #4b5563;
+    --bg-primary: #111827;
+    --bg-secondary: #1f2937;
+    --bg-tertiary: #374151;
+    --border-color: #374151;
+    --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.3);
+    --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.4);
+    --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.5);
+    --card-bg: #1f2937;
+    --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.4);
+    --input-bg: #374151;
+}
+
+:root[data-theme='light'] {
+    --text-primary: #111827;
+    --text-secondary: #6b7280;
+    --text-light: #9ca3af;
+    --text-tertiary: #d1d5db;
+    --bg-primary: #ffffff;
+    --bg-secondary: #f9fafb;
+    --bg-tertiary: #f3f4f6;
+    --border-color: #e5e7eb;
+    --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+    --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+    --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+    --card-bg: #ffffff;
+    --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+    --input-bg: #ffffff;
+}
+
 body {
     font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
     background-color: var(--bg-secondary);
@@ -1844,6 +1878,19 @@ select:focus {
     outline-offset: 2px;
 }
 
+.theme-toggle-btn {
+    background: rgba(255, 255, 255, 0.12);
+    color: #ffffff;
+    border: 1px solid rgba(255, 255, 255, 0.35);
+    padding: 0.5rem 0.75rem;
+}
+
+.theme-toggle-btn:hover {
+    background: #ffffff;
+    color: var(--primary-color);
+    border-color: #ffffff;
+}
+
 /* Styles pour les sections user-info */
 #authenticated-user {
     display: flex;
@@ -1865,5 +1912,9 @@ select:focus {
     
     .auth-header h1 {
         font-size: 2rem;
+    }
+
+    #themeToggleText {
+        display: none;
     }
 }
