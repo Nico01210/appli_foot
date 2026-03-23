@@ -8,6 +8,7 @@ class Prediction {
         this.match_id = data.match_id;
         this.team1_score = data.team1_score;
         this.team2_score = data.team2_score;
+        this.winner_pick = data.winner_pick || null;
         this.points_earned = data.points_earned || 0;
         this.created_at = data.created_at || new Date().toISOString();
         this.updated_at = data.updated_at || new Date().toISOString();
@@ -19,14 +20,14 @@ class Prediction {
         
         const sql = `
             INSERT OR REPLACE INTO predictions 
-            (id, user_id, match_id, team1_score, team2_score, points_earned, created_at, updated_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            (id, user_id, match_id, team1_score, team2_score, winner_pick, points_earned, created_at, updated_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
         `;
         
         await dbUtils.run(sql, [
             prediction.id, prediction.user_id, prediction.match_id,
-            prediction.team1_score, prediction.team2_score, prediction.points_earned,
-            prediction.created_at, prediction.updated_at
+            prediction.team1_score, prediction.team2_score, prediction.winner_pick,
+            prediction.points_earned, prediction.created_at, prediction.updated_at
         ]);
 
         return prediction;
@@ -49,7 +50,7 @@ class Prediction {
     // Obtenir toutes les prédictions d'un utilisateur
     static async findByUser(userId) {
         const sql = `
-            SELECT p.*, m.team1, m.team2, m.date, m.status
+            SELECT p.*, m.team1, m.team2, m.date, m.status, m.phase
             FROM predictions p
             JOIN matches m ON p.match_id = m.id
             WHERE p.user_id = ?
@@ -62,7 +63,8 @@ class Prediction {
                 team1: row.team1,
                 team2: row.team2,
                 date: row.date,
-                status: row.status
+                status: row.status,
+                phase: row.phase
             }
         }));
     }
@@ -93,6 +95,10 @@ class Prediction {
             throw new Error('Configuration des points non trouvée');
         }
 
+        // Obtenir le match pour vérifier la phase
+        const matchSql = 'SELECT * FROM matches WHERE id = ?';
+        const match = await dbUtils.get(matchSql, [matchId]);
+
         // Obtenir toutes les prédictions pour ce match
         const predictionsSql = 'SELECT * FROM predictions WHERE match_id = ?';
         const predictions = await dbUtils.all(predictionsSql, [matchId]);
@@ -116,6 +122,18 @@ class Prediction {
                     points = config.correct_winner;
                 } else {
                     points = config.wrong_prediction;
+                }
+            }
+
+            // Bonus phase finale : +1 point si score nul prédit + bon vainqueur choisi
+            if (match && match.phase === 'knockout' 
+                && prediction.team1_score === prediction.team2_score 
+                && prediction.winner_pick) {
+                // Déterminer le vrai vainqueur du match
+                const actualWinner = team1Score > team2Score ? 'team1' : 
+                                   team2Score > team1Score ? 'team2' : null;
+                if (actualWinner && prediction.winner_pick === actualWinner) {
+                    points += 1;
                 }
             }
 

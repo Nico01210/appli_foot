@@ -6,8 +6,7 @@ const CONFIG = {
         winnerRegular: 1
     },
     tournaments: {
-        worldcup: 'Coupe du Monde 2026',
-        ligue1: 'Ligue 1 2024-25'
+        worldcup: 'Coupe du Monde 2026'
     },
     teamFlags: {
         'France': '\u{1F1EB}\u{1F1F7}', 'Argentine': '\u{1F1E6}\u{1F1F7}', 'Br\u00e9sil': '\u{1F1E7}\u{1F1F7}', 'Allemagne': '\u{1F1E9}\u{1F1EA}',
@@ -97,13 +96,6 @@ class UIManager {
             tab.addEventListener('click', (e) => this.switchTab(e.currentTarget.dataset.tab));
         });
 
-        // Selecteur de tournoi
-        document.getElementById('tournamentSelect').addEventListener('change', (e) => {
-            appState.currentTournament = e.target.value;
-            this.renderMatches();
-            this.renderDashboard();
-        });
-
         // Filtre des matchs
         document.getElementById('matchFilter').addEventListener('change', () => this.renderMatches());
 
@@ -121,6 +113,20 @@ class UIManager {
             if (e.target.id === 'predictionModal') this.closeModal();
         });
         document.getElementById('submitPrediction').addEventListener('click', () => this.submitPrediction());
+
+        // Score inputs : montrer/cacher le choix vainqueur
+        document.getElementById('homeScore').addEventListener('input', () => this._updateWinnerPickVisibility());
+        document.getElementById('awayScore').addEventListener('input', () => this._updateWinnerPickVisibility());
+
+        // Winner pick buttons
+        document.querySelectorAll('.winner-pick-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                var pick = e.currentTarget.dataset.pick;
+                document.getElementById('predictionModal').dataset.winnerPick = pick;
+                document.querySelectorAll('.winner-pick-btn').forEach(b => b.classList.remove('active'));
+                e.currentTarget.classList.add('active');
+            });
+        });
 
         // Modal pronostics d'un joueur
         document.getElementById('closePlayerModal').addEventListener('click', () => this.closePlayerModal());
@@ -454,6 +460,7 @@ class UIManager {
             var isCompleted = match.status === 'completed';
             var canPredict = !isCompleted && new Date(match.date) > new Date();
             var tournamentName = CONFIG.tournaments[match.tournament] || match.tournament;
+            var phaseLabel = match.phase === 'knockout' ? ' - Phase finale' : '';
 
             var completedDisplay = isCompleted ? 
                 '<div class="final-result">' +
@@ -467,8 +474,14 @@ class UIManager {
 
             var predictionDisplay = '';
             if (pred) {
+                var winnerPickHtml = '';
+                if (pred.winner_pick && match.phase === 'knockout' && pred.team1_score === pred.team2_score) {
+                    var winnerName = pred.winner_pick === 'team1' ? match.team1 : match.team2;
+                    winnerPickHtml = '<div class="prediction-winner-pick"><i class="fas fa-trophy"></i> Vainqueur choisi : ' + winnerName + '</div>';
+                }
                 predictionDisplay = '<div class="prediction-info">' +
-                    '<div class="predicted-score"><i class="fas fa-user"></i> Votre pronostic: ' + pred.team1_score + ' - ' + pred.team2_score + '</div>';
+                    '<div class="predicted-score"><i class="fas fa-user"></i> Votre pronostic: ' + pred.team1_score + ' - ' + pred.team2_score + '</div>' +
+                    winnerPickHtml;
                 if (isCompleted) {
                     var ptClass = pred.points_earned > 0 ? 'success' : 'error';
                     var ptIcon = pred.points_earned > 0 ? 'trophy' : 'times';
@@ -489,7 +502,7 @@ class UIManager {
 
             return '<div class="match-card ' + (isCompleted ? 'completed-match' : '') + '">' +
                 '<div class="match-header">' +
-                    '<span class="match-tournament">' + tournamentName + '</span>' +
+                    '<span class="match-tournament">' + tournamentName + phaseLabel + '</span>' +
                     '<div class="match-info-row">' +
                         '<span class="match-date">' + self.formatDate(match.date) + '</span>' +
                         (!isCompleted && canPredict ? '<span class="match-countdown" data-match-date="' + match.date + '" style="font-size:0.85rem;color:var(--primary-color);font-weight:600;">Pronostiquer avant: ' + self.formatTimeRemaining(match.date) + '</span>' : '') +
@@ -618,13 +631,19 @@ class UIManager {
                 ? '<span class="pp-score">' + pred.team1_score + ' - ' + pred.team2_score + '</span>'
                 : '<span class="pp-score hidden-score"><i class="fas fa-eye-slash"></i> Masqué</span>';
 
+            var winnerPickHtml = '';
+            if (showScore && pred.winner_pick && match.phase === 'knockout' && pred.team1_score === pred.team2_score) {
+                var winnerName = pred.winner_pick === 'team1' ? match.team1 : match.team2;
+                winnerPickHtml = '<div class="pp-winner-pick"><i class="fas fa-trophy"></i> ' + winnerName + '</div>';
+            }
+
             return '<div class="pp-item ' + (isCompleted ? 'pp-completed' : 'pp-pending') + '">' +
                 '<div class="pp-status">' + statusIcon + '</div>' +
                 '<div class="pp-match">' +
                     '<div class="pp-teams">' + getTeamFlag(match.team1) + ' ' + match.team1 + ' vs ' + match.team2 + ' ' + getTeamFlag(match.team2) + '</div>' +
                     '<div class="pp-date">' + self.formatDate(match.date) + '</div>' +
                 '</div>' +
-                '<div class="pp-prediction">' + scoreDisplay + '</div>' +
+                '<div class="pp-prediction">' + scoreDisplay + winnerPickHtml + '</div>' +
                 '<div class="pp-result">' + pointsHtml + '</div>' +
             '</div>';
         }).join('');
@@ -655,13 +674,50 @@ class UIManager {
         document.getElementById('homeScore').value = pred ? pred.team1_score : 0;
         document.getElementById('awayScore').value = pred ? pred.team2_score : 0;
 
+        // Winner pick buttons
+        document.getElementById('pickTeam1').textContent = match.team1;
+        document.getElementById('pickTeam2').textContent = match.team2;
+
+        // Stocker la phase du match
+        var modal = document.getElementById('predictionModal');
+        modal.dataset.matchId = matchId;
+        modal.dataset.matchPhase = match.phase || 'group';
+        modal.dataset.winnerPick = '';
+
+        // Restaurer winner_pick si existant
+        if (pred && pred.winner_pick) {
+            modal.dataset.winnerPick = pred.winner_pick;
+        }
+
+        this._updateWinnerPickVisibility();
+
         var countdownEl = document.getElementById('modalCountdown');
         if (countdownEl) {
             countdownEl.textContent = 'Temps restant: ' + this.formatTimeRemaining(match.date);
         }
 
-        document.getElementById('predictionModal').dataset.matchId = matchId;
-        document.getElementById('predictionModal').classList.add('active');
+        modal.classList.add('active');
+    }
+
+    _updateWinnerPickVisibility() {
+        var modal = document.getElementById('predictionModal');
+        var section = document.getElementById('winnerPickSection');
+        var homeScore = parseInt(document.getElementById('homeScore').value || 0, 10);
+        var awayScore = parseInt(document.getElementById('awayScore').value || 0, 10);
+        var isKnockout = modal.dataset.matchPhase === 'knockout';
+        var isDraw = homeScore === awayScore;
+
+        if (isKnockout && isDraw) {
+            section.style.display = '';
+            // Mettre à jour l'état actif du bouton
+            var pick = modal.dataset.winnerPick || '';
+            document.querySelectorAll('.winner-pick-btn').forEach(function(btn) {
+                btn.classList.toggle('active', btn.dataset.pick === pick);
+            });
+        } else {
+            section.style.display = 'none';
+            modal.dataset.winnerPick = '';
+        }
     }
 
     closeModal() {
@@ -669,7 +725,8 @@ class UIManager {
     }
 
     async submitPrediction() {
-        var matchId = document.getElementById('predictionModal').dataset.matchId;
+        var modal = document.getElementById('predictionModal');
+        var matchId = modal.dataset.matchId;
         var homeScore = parseInt(document.getElementById('homeScore').value || 0, 10);
         var awayScore = parseInt(document.getElementById('awayScore').value || 0, 10);
 
@@ -678,8 +735,17 @@ class UIManager {
             return;
         }
 
+        var winnerPick = null;
+        if (modal.dataset.matchPhase === 'knockout' && homeScore === awayScore) {
+            winnerPick = modal.dataset.winnerPick || null;
+            if (!winnerPick) {
+                this.showToast('Veuillez choisir le vainqueur pour ce match de phase finale', 'error');
+                return;
+            }
+        }
+
         try {
-            await apiClient.createPrediction(matchId, homeScore, awayScore);
+            await apiClient.createPrediction(matchId, homeScore, awayScore, winnerPick);
             this.showToast('Pronostic enregistre !', 'success');
             this.closeModal();
             await this.loadAllData();
@@ -765,7 +831,7 @@ class UIManager {
         var team1 = document.getElementById('homeTeam').value.trim();
         var team2 = document.getElementById('awayTeam').value.trim();
         var date = document.getElementById('matchDate').value;
-        var tournament = document.getElementById('matchTournament').value;
+        var phase = document.getElementById('matchPhase').value;
 
         if (!team1 || !team2 || !date) {
             this.showToast('Veuillez remplir tous les champs', 'error');
@@ -774,7 +840,7 @@ class UIManager {
 
         try {
             await apiClient.createMatch({
-                team1: team1, team2: team2, date: date, tournament: tournament,
+                team1: team1, team2: team2, date: date, tournament: 'worldcup', phase: phase,
                 team1_flag: getTeamFlag(team1),
                 team2_flag: getTeamFlag(team2)
             });

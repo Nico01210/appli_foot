@@ -29,7 +29,7 @@ router.get('/match/:matchId', async (req, res) => {
 // Créer ou mettre à jour une prédiction
 router.post('/', authenticateToken, async (req, res) => {
     try {
-        const { match_id, team1_score, team2_score } = req.body;
+        const { match_id, team1_score, team2_score, winner_pick } = req.body;
         const user_id = req.user.userId;
 
         // Validation des données
@@ -68,24 +68,34 @@ router.post('/', authenticateToken, async (req, res) => {
         // Vérifier si une prédiction existe déjà
         const existingPrediction = await Prediction.findByUserAndMatch(user_id, match_id);
         
+        // Valider winner_pick uniquement pour les matchs de phase finale avec score nul
+        const t1 = parseInt(team1_score);
+        const t2 = parseInt(team2_score);
+        let validatedWinnerPick = null;
+        if (match.phase === 'knockout' && t1 === t2) {
+            if (winner_pick && (winner_pick === 'team1' || winner_pick === 'team2')) {
+                validatedWinnerPick = winner_pick;
+            }
+        }
+
         let prediction;
         if (existingPrediction) {
-            // Mettre à jour la prédiction existante
             prediction = await Prediction.create({
                 id: existingPrediction.id,
                 user_id,
                 match_id,
-                team1_score: parseInt(team1_score),
-                team2_score: parseInt(team2_score),
+                team1_score: t1,
+                team2_score: t2,
+                winner_pick: validatedWinnerPick,
                 updated_at: new Date().toISOString()
             });
         } else {
-            // Créer une nouvelle prédiction
             prediction = await Prediction.create({
                 user_id,
                 match_id,
-                team1_score: parseInt(team1_score),
-                team2_score: parseInt(team2_score)
+                team1_score: t1,
+                team2_score: t2,
+                winner_pick: validatedWinnerPick
             });
         }
 

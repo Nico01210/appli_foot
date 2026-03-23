@@ -107,10 +107,12 @@ class APIClient {
     }
 
     // === PREDICTIONS ===
-    async createPrediction(matchId, team1Score, team2Score) {
+    async createPrediction(matchId, team1Score, team2Score, winnerPick) {
+        var body = { match_id: matchId, team1_score: team1Score, team2_score: team2Score };
+        if (winnerPick) body.winner_pick = winnerPick;
         return await this.request('/predictions', {
             method: 'POST',
-            body: JSON.stringify({ match_id: matchId, team1_score: team1Score, team2_score: team2Score })
+            body: JSON.stringify(body)
         });
     }
 

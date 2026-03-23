@@ -42,6 +42,7 @@ function initializeDatabase() {
             date DATETIME NOT NULL,
             venue TEXT,
             tournament TEXT DEFAULT 'worldcup',
+            phase TEXT DEFAULT 'group',
             status TEXT DEFAULT 'pending',
             team1_score INTEGER,
             team2_score INTEGER,
@@ -49,6 +50,11 @@ function initializeDatabase() {
             updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
         )
     `);
+
+    // Migration : ajouter colonne phase si elle n'existe pas
+    db.run(`ALTER TABLE matches ADD COLUMN phase TEXT DEFAULT 'group'`, (err) => {
+        if (err && !err.message.includes('duplicate column')) console.error(err);
+    });
 
     // Table des prédictions
     db.run(`
@@ -58,6 +64,7 @@ function initializeDatabase() {
             match_id TEXT NOT NULL,
             team1_score INTEGER NOT NULL,
             team2_score INTEGER NOT NULL,
+            winner_pick TEXT,
             points_earned INTEGER DEFAULT 0,
             created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
             updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
@@ -66,6 +73,11 @@ function initializeDatabase() {
             UNIQUE(user_id, match_id)
         )
     `);
+
+    // Migration : ajouter colonne winner_pick si elle n'existe pas
+    db.run(`ALTER TABLE predictions ADD COLUMN winner_pick TEXT`, (err) => {
+        if (err && !err.message.includes('duplicate column')) console.error(err);
+    });
 
     // Table de configuration des points
     db.run(`
