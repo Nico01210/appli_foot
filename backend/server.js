@@ -33,7 +33,10 @@ if (rateLimit) {
 }
 
 // Middleware
-app.use(cors());
+app.use(cors({
+    origin: process.env.CORS_ORIGIN || '*',
+    credentials: true
+}));
 app.use(bodyParser.json({ limit: '1mb' }));
 app.use(bodyParser.urlencoded({ extended: true }));
 
@@ -67,7 +70,7 @@ app.use('*', (req, res) => {
 });
 
 // Démarrage du serveur
-app.listen(PORT, () => {
+app.listen(PORT, '0.0.0.0', () => {
     console.log(`🚀 Serveur backend démarré sur le port ${PORT}`);
     console.log(`🌐 Frontend accessible sur http://localhost:${PORT}`);
     console.log(`📡 API disponible sur http://localhost:${PORT}/api`);

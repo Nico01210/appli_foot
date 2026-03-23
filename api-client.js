@@ -2,10 +2,8 @@
 
 class APIClient {
     constructor() {
-        // URL de l'API - même origine si servi par le backend, sinon localhost:3001
-        this.baseURL = window.location.port === '3001' 
-            ? '/api' 
-            : 'http://localhost:3001/api';
+        // Toujours utiliser le chemin relatif (fonctionne en local et en production)
+        this.baseURL = '/api';
         this.token = localStorage.getItem('auth_token');
     }
 

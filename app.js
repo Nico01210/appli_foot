@@ -342,6 +342,8 @@ class UIManager {
 
     // === NAVIGATION ===
     switchTab(tabName) {
+        if (tabName === 'admin' && !appState.isAdmin) return;
+
         document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
         var tabEl = document.querySelector('[data-tab="' + tabName + '"]');
         if (tabEl) tabEl.classList.add('active');

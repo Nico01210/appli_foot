@@ -1,230 +1,177 @@
-# Pronostics Football ⚽
+# PronoFoot - Pronostics Football ⚽
 
-Une application web progressive (PWA) pour faire des pronostics sur les matchs de football et participer à des classements avec vos amis !
+Application web de pronostics football entre amis pour la **Coupe du Monde 2026**. Chaque joueur prédit les scores des matchs et marque des points selon la justesse de ses pronostics. Accessible sur mobile et ordinateur depuis n'importe où.
 
-## 🚀 Fonctionnalités
+## Fonctionnalités
 
-### 🏆 Système de Pronostics
-- **Prédictions de scores** : Pronostiquez le score exact des matchs
-- **Système de points personnalisable** :
-  - Score exact : 5 points (par défaut)
-  - Bon résultat (victoire/nul/défaite) : 3 points
-  - Écart de buts correct : 2 points
-- **Gestion multi-tournois** : Coupe du Monde 2026 et Ligue 1
+### Pronostics
+- **Prédiction de score** sur chaque match à venir
+- **Choix du vainqueur en phase finale** : quand un joueur prédit un score nul sur un match de phase finale (knockout), il doit choisir quelle équipe sera le vainqueur
+- **Verrouillage automatique** : impossible de pronostiquer une fois le match commencé
+- **Modification** possible tant que le match n'a pas débuté
+- **Compte à rebours** en temps réel sur chaque match
 
-### 📊 Dashboard Personnel
-- **Statistiques individuelles** :
-  - Nombre total de pronostics
-  - Pronostics corrects
-  - Pourcentage de réussite
-  - Position dans le classement
-- **Historique des pronostics récents**
-- **Suivi des performances par tournoi**
+### Système de points
+| Résultat | Points |
+|---|---|
+| Score exact | **3 points** |
+| Bon vainqueur (ou match nul) | **1 point** |
+| Mauvais pronostic | **0 point** |
+| Bonus : bon vainqueur choisi en phase finale (score nul prédit) | **+1 point** |
 
-### 🏅 Classement Compétitif
-- **Classement général** avec système de points
-- **Vues temporelles** : général, mensuel, hebdomadaire
-- **Statistiques détaillées** pour chaque joueur
-- **Mise en évidence** de votre position
+Les points sont configurables par l'admin via l'interface.
 
-### ⚙️ Administration
-- **Configuration du système de points**
-- **Ajout de nouveaux matchs**
-- **Mise à jour des résultats**
-- **Statistiques globales de l'application**
+### Classement
+- Classement général en temps réel
+- **Flèches de progression** (vert/rouge) indiquant l'évolution du rang après chaque match
+- Statistiques par joueur : nombre de pronostics, taux de réussite
+- Podium avec médailles (or, argent, bronze)
+- Clic sur un joueur pour voir **tous ses pronostics** (en cours et terminés)
 
-### 📱 Expérience Mobile
-- **PWA** : Installation sur mobile comme une app native
-- **Design responsive** optimisé mobile-first
-- **Mode hors-ligne** avec cache intelligent
-- **Notifications push** (à venir)
+### Vie privée des pronostics
+- Les pronostics des autres joueurs sont **masqués** tant que le match n'a pas commencé
+- Visibles une fois le match démarré ou terminé
 
-## 🛠️ Technologies Utilisées
+### Administration (réservé aux admins)
+- Onglet Admin **invisible** pour les joueurs non-admin
+- Ajout de matchs avec sélection de phase (groupes / phase finale)
+- Mise à jour des scores et résultats
+- Modification des pseudos des joueurs (les joueurs ne peuvent pas changer leur pseudo eux-mêmes)
+- Protection contre les doublons de pseudos
+- Configuration du barème de points
+- Statistiques globales
 
-- **Frontend** : HTML5, CSS3, JavaScript (ES6+)
-- **Design** : CSS Grid, Flexbox, Variables CSS
-- **PWA** : Service Worker, Web App Manifest
-- **Stockage** : LocalStorage pour la persistance
-- **Icons** : Font Awesome 6
-- **Fonts** : Inter (Google Fonts)
+### Expérience utilisateur
+- **PWA** : installable sur mobile comme une app native
+- **Responsive** : adapté mobile, tablette et desktop
+- **Thème sombre/clair** avec détection automatique des préférences système
+- **Drapeaux emoji** pour 50+ équipes nationales
 
-## 📦 Installation
+## Stack technique
 
-### Option 1 : Utilisation directe
-1. Clonez ou téléchargez les fichiers
-2. Ouvrez `index.html` dans un navigateur moderne
-3. L'application fonctionne immédiatement !
+| Couche | Technologies |
+|---|---|
+| Frontend | HTML5, CSS3 (variables CSS, Grid, Flexbox), JavaScript vanilla (ES6+) |
+| Backend | Node.js, Express |
+| Base de données | SQLite3 |
+| Auth | JWT (jsonwebtoken), bcryptjs |
+| Sécurité | Helmet, express-rate-limit, CORS |
+| PWA | Service Worker, Web App Manifest |
+| Hébergement | Render.com (avec disque persistant) |
 
-### Option 2 : Serveur local (recommandé pour PWA)
-```bash
-# Avec Python
-python -m http.server 8000
-
-# Avec Node.js (http-server)
-npx http-server
-
-# Avec PHP
-php -S localhost:8000
-```
-
-### Option 3 : Installation PWA
-1. Ouvrez l'application dans Chrome/Edge/Safari
-2. Cliquez sur "Installer" dans la barre d'adresse
-3. L'app s'installe comme une application native !
-
-## 🎮 Comment Jouer
-
-### Premier lancement
-1. **Entrez votre nom** lors de la première visite
-2. **Explorez les onglets** : Dashboard, Pronostics, Classement
-3. **Choisissez votre tournoi** (Coupe du Monde ou Ligue 1)
-
-### Faire des pronostics
-1. Allez dans l'onglet **"Pronostics"**
-2. Cliquez sur **"Pronostiquer"** pour un match à venir
-3. Entrez le **score que vous prédisez**
-4. Confirmez votre pronostic
-
-### Gagner des points
-- **Score exact** : Maximum de points !
-- **Bon résultat** : Points intermédiaires
-- **Écart de buts** : Points de consolation
-- **Mauvais pronostic** : Aucun point
-
-### Administration (pour les organisateurs)
-1. Allez dans l'onglet **"Admin"**
-2. **Configurez les points** selon vos préférences
-3. **Ajoutez de nouveaux matchs**
-4. **Mettez à jour les résultats** après les matchs
-
-## 🎯 Structure des Points
-
-Le système de points est entièrement personnalisable via l'interface admin :
-
-```
-Score exact (par défaut: 5 points)
-├── Pronostic: France 2-1 Argentine
-└── Résultat réel: France 2-1 Argentine
-    ✅ Score parfait = 5 points
-
-Bon résultat (par défaut: 3 points)  
-├── Pronostic: France 3-1 Argentine
-└── Résultat réel: France 2-0 Argentine
-    ✅ Victoire France prédite = 3 points
-
-Écart de buts (par défaut: 2 points)
-├── Pronostic: France 1-2 Argentine  
-└── Résultat réel: France 0-1 Argentine
-    ✅ Écart d'1 but prédit = 2 points
-```
-
-## 📁 Structure du Projet
+## Structure du projet
 
 ```
 appli_foot/
-├── index.html          # Page principale de l'application
-├── styles.css          # Styles CSS responsive
-├── app.js              # Logique JavaScript
-├── manifest.json       # Configuration PWA
-├── sw.js              # Service Worker
-├── icon-192.svg       # Icône de l'application
-└── README.md          # Documentation
+├── index.html              # Page unique (SPA)
+├── app.js                  # Logique UI (classe UIManager)
+├── api-client.js           # Client API (classe APIClient)
+├── styles.css              # Styles responsive + thèmes
+├── manifest.json           # Configuration PWA
+├── sw.js                   # Service Worker
+├── render.yaml             # Config déploiement Render.com
+├── .gitignore
+└── backend/
+    ├── server.js           # Serveur Express
+    ├── package.json
+    ├── models/
+    │   ├── database.js     # Connexion SQLite + schéma
+    │   ├── User.js         # Modèle utilisateur
+    │   ├── Match.js        # Modèle match
+    │   └── Prediction.js   # Modèle pronostic + calcul des points
+    ├── routes/
+    │   ├── auth.js         # Inscription, connexion, JWT
+    │   ├── users.js        # Gestion des joueurs
+    │   ├── matches.js      # CRUD matchs + mise à jour scores
+    │   ├── predictions.js  # CRUD pronostics
+    │   └── leaderboard.js  # Classement + historique des rangs
+    └── scripts/
+        └── migrate.js      # Scripts de migration
 ```
 
-## 🔧 Personnalisation
+## Base de données
 
-### Ajouter de nouveaux tournois
-Dans `app.js`, modifiez l'objet `CONFIG.tournaments` :
+| Table | Rôle |
+|---|---|
+| `users` | Joueurs (pseudo unique, email, hash mot de passe, points, stats) |
+| `matches` | Matchs (équipes, date, tournoi, phase group/knockout, score, statut) |
+| `predictions` | Pronostics (score prédit, winner_pick pour knockout, points gagnés) |
+| `points_config` | Barème de points configurable |
+| `rank_history` | Historique des classements pour les flèches de progression |
 
-```javascript
-tournaments: {
-    worldcup: 'Coupe du Monde 2026',
-    ligue1: 'Ligue 1 2024-25',
-    championsleague: 'Champions League',  // Nouveau tournoi
-    euro2028: 'Euro 2028'                 // Nouveau tournoi
-}
+## API
+
+### Authentification (`/api/auth`)
+| Méthode | Endpoint | Auth | Description |
+|---|---|---|---|
+| POST | `/register` | Non | Inscription (pseudo, email, mot de passe) |
+| POST | `/login` | Non | Connexion → retourne un JWT (7 jours) |
+| GET | `/me` | Oui | Infos de l'utilisateur connecté |
+
+### Matchs (`/api/matches`)
+| Méthode | Endpoint | Auth | Description |
+|---|---|---|---|
+| GET | `/` | Non | Liste des matchs (filtre par `?status=` ou `?userId=`) |
+| POST | `/` | Admin | Créer un match |
+| PUT | `/:id/score` | Admin | Mettre à jour le score → calcule les points |
+| PUT | `/:id/status` | Admin | Changer le statut |
+| DELETE | `/:id` | Admin | Supprimer un match |
+
+### Pronostics (`/api/predictions`)
+| Méthode | Endpoint | Auth | Description |
+|---|---|---|---|
+| GET | `/user/:userId` | Non | Pronostics d'un joueur |
+| GET | `/match/:matchId` | Non | Pronostics d'un match |
+| POST | `/` | Oui | Créer/modifier un pronostic |
+
+### Classement (`/api/leaderboard`)
+| Méthode | Endpoint | Auth | Description |
+|---|---|---|---|
+| GET | `/` | Non | Classement général avec évolution |
+| GET | `/detailed` | Non | Classement détaillé |
+| GET | `/user/:userId` | Non | Rang d'un joueur |
+
+## Installation locale
+
+```bash
+# Cloner le projet
+git clone <url-du-repo>
+cd appli_foot
+
+# Installer les dépendances
+cd backend
+npm install
+
+# Lancer le serveur
+node server.js
 ```
 
-### Modifier les couleurs
-Dans `styles.css`, changez les variables CSS :
+L'application est accessible sur `http://localhost:3001`.
 
-```css
-:root {
-    --primary-color: #2563eb;    /* Bleu principal */
-    --secondary-color: #10b981;  /* Vert secondaire */
-    --success-color: #059669;    /* Vert succès */
-    /* ... autres couleurs */
-}
-```
+## Déploiement (Render.com)
 
-### Personnaliser les points par défaut
-Dans `app.js`, modifiez `CONFIG.pointsSystem` :
+1. **Pousser sur GitHub** :
+   ```bash
+   git init
+   git add .
+   git commit -m "Initial commit"
+   git remote add origin <url-github>
+   git push -u origin main
+   ```
 
-```javascript
-pointsSystem: {
-    exactScore: 10,        // Plus de points pour score exact
-    correctResult: 5,      // Points moyens pour bon résultat  
-    goalDifference: 3      // Points pour écart correct
-}
-```
+2. **Sur Render.com** :
+   - Créer un **Web Service** connecté au dépôt GitHub
+   - Root Directory : `backend`
+   - Build Command : `npm install`
+   - Start Command : `node server.js`
+   - Variables d'environnement :
+     - `JWT_SECRET` : chaîne secrète aléatoire
+     - `DB_PATH` : `/opt/render/project/data`
+     - `NODE_ENV` : `production`
+   - Ajouter un **Disk** (1 GB) monté sur `/opt/render/project/data`
 
-## 🌟 Fonctionnalités Avancées
+Le fichier [render.yaml](render.yaml) est inclus pour configurer automatiquement le service.
 
-### Persistance des données
-- **LocalStorage** : Toutes les données sont sauvegardées localement
-- **Synchronisation automatique** entre les onglets
-- **Récupération de session** : Retrouvez vos données au redémarrage
+## Licence
 
-### Mode hors-ligne
-- **Service Worker** : Fonctionne sans connexion
-- **Cache intelligent** : Ressources mises en cache automatiquement
-- **Synchronisation** : Données synchronisées au retour de connexion
-
-### Responsive Design
-- **Mobile-first** : Optimisé d'abord pour mobile
-- **Tablettes** : Interface adaptée aux écrans moyens
-- **Desktop** : Expérience complète sur grand écran
-
-## 🚀 Fonctionnalités Futures
-
-- [ ] **Notifications push** pour les nouveaux matchs
-- [ ] **Mode multijoueur** avec synchronisation cloud
-- [ ] **Statistiques avancées** et graphiques
-- [ ] **Import/Export** de données
-- [ ] **Themes** sombre/clair
-- [ ] **API** de scores en temps réel
-- [ ] **Ligues privées** avec codes d'accès
-- [ ] **Achievements** et badges
-
-## 🐛 Dépannage
-
-### L'application ne se charge pas
-- Vérifiez que JavaScript est activé
-- Utilisez un navigateur moderne (Chrome, Firefox, Safari, Edge)
-- Effacez le cache du navigateur
-
-### Les données sont perdues
-- Les données sont stockées localement dans le navigateur
-- Évitez de vider les données de navigation pour ce site
-- Exportez vos données régulièrement (fonctionnalité à venir)
-
-### PWA ne s'installe pas
-- Utilisez HTTPS ou localhost
-- Vérifiez que le Service Worker fonctionne
-- Certains navigateurs nécessitent une interaction utilisateur
-
-## 📄 Licence
-
-Ce projet est sous licence MIT. Libre d'utilisation, modification et distribution.
-
-## 🤝 Contribution
-
-Les contributions sont les bienvenues ! N'hésitez pas à :
-- Signaler des bugs
-- Proposer des fonctionnalités
-- Améliorer la documentation
-- Partager vos idées
-
----
-
-**Amusez-vous bien avec vos pronostics ! ⚽🏆**
+MIT
