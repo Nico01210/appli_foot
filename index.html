@@ -363,18 +363,33 @@
                         <h3>Profil Utilisateur</h3>
                         <div class="profile-management">
                             <div class="profile-item">
-                                <label for="userNameInput">Pseudonyme :</label>
-                                <div style="display: flex; gap: 1rem; align-items: center; flex-wrap: wrap;">
-                                    <input type="text" id="userNameInput" placeholder="Votre pseudonyme" maxlength="20" style="width: 150px; max-width: 150px;">
-                                    <button id="saveUserName" class="btn btn-primary">
-                                        <i class="fas fa-save"></i>
-                                        Modifier
-                                    </button>
-                                </div>
+                                <label>Pseudonyme :</label>
+                                <span id="userNameDisplay" style="font-weight: bold; font-size: 1.1em;"></span>
                             </div>
                             <div class="profile-stats">
                                 <p><strong>Membre depuis :</strong> <span id="memberSince"></span></p>
                                 <p><strong>Dernière activité :</strong> <span id="lastActivity"></span></p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Section admin : modifier le pseudo d'un joueur -->
+                    <div class="admin-section admin-only-section">
+                        <h3><i class="fas fa-user-edit"></i> Modifier le pseudo d'un joueur</h3>
+                        <div class="profile-management">
+                            <div class="profile-item">
+                                <label for="adminUserSelect">Joueur :</label>
+                                <select id="adminUserSelect" style="width: 200px;"></select>
+                            </div>
+                            <div class="profile-item">
+                                <label for="adminNewName">Nouveau pseudo :</label>
+                                <div style="display: flex; gap: 1rem; align-items: center; flex-wrap: wrap;">
+                                    <input type="text" id="adminNewName" placeholder="Nouveau pseudonyme" maxlength="20" style="width: 150px; max-width: 150px;">
+                                    <button id="adminSaveUserName" class="btn btn-primary">
+                                        <i class="fas fa-save"></i>
+                                        Modifier
+                                    </button>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -503,6 +518,28 @@
 
     <!-- Toast notifications -->
     <div id="toastContainer" class="toast-container"></div>
+
+    <!-- Modal pronostics d'un joueur -->
+    <div id="playerPredictionsModal" class="modal" role="dialog" aria-modal="true">
+        <div class="modal-content modal-large">
+            <div class="modal-header">
+                <h3 id="playerModalTitle">Pronostics du joueur</h3>
+                <button class="modal-close" id="closePlayerModal" aria-label="Fermer">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="player-modal-tabs">
+                    <button class="player-modal-tab active" data-filter="all">Tous</button>
+                    <button class="player-modal-tab" data-filter="pending">En cours</button>
+                    <button class="player-modal-tab" data-filter="completed">Terminés</button>
+                </div>
+                <div id="playerPredictionsList" class="player-predictions-list">
+                    <p class="text-center">Chargement...</p>
+                </div>
+            </div>
+        </div>
+    </div>
 
     <!-- JavaScript -->
     <script src="api-client.js?v=3.1"></script>

@@ -78,6 +78,19 @@ function initializeDatabase() {
         )
     `);
 
+    // Table d'historique des classements (pour les flèches montée/descente)
+    db.run(`
+        CREATE TABLE IF NOT EXISTS rank_history (
+            user_id TEXT NOT NULL,
+            rank INTEGER NOT NULL,
+            match_id TEXT NOT NULL,
+            recorded_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            PRIMARY KEY (user_id, match_id),
+            FOREIGN KEY (user_id) REFERENCES users (id),
+            FOREIGN KEY (match_id) REFERENCES matches (id)
+        )
+    `);
+
     // Insérer la configuration par défaut
     db.run(`
         INSERT OR IGNORE INTO points_config (id, exact_score, correct_winner, wrong_prediction)
@@ -90,6 +103,7 @@ function initializeDatabase() {
     db.run('CREATE INDEX IF NOT EXISTS idx_matches_status ON matches(status)');
     db.run('CREATE INDEX IF NOT EXISTS idx_matches_date ON matches(date)');
     db.run('CREATE INDEX IF NOT EXISTS idx_users_email ON users(email)');
+    db.run('CREATE UNIQUE INDEX IF NOT EXISTS idx_users_name ON users(name)');
 
     console.log('📊 Tables de base de données initialisées');
 }

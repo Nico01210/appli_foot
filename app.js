@@ -122,6 +122,20 @@ class UIManager {
         });
         document.getElementById('submitPrediction').addEventListener('click', () => this.submitPrediction());
 
+        // Modal pronostics d'un joueur
+        document.getElementById('closePlayerModal').addEventListener('click', () => this.closePlayerModal());
+        document.getElementById('playerPredictionsModal').addEventListener('click', (e) => {
+            if (e.target.id === 'playerPredictionsModal') this.closePlayerModal();
+        });
+        document.querySelectorAll('.player-modal-tab').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                document.querySelectorAll('.player-modal-tab').forEach(b => b.classList.remove('active'));
+                e.currentTarget.classList.add('active');
+                this._playerPredictionsFilter = e.currentTarget.dataset.filter;
+                this.renderPlayerPredictions();
+            });
+        });
+
         // Admin - form ajout match
         document.getElementById('addMatchForm').addEventListener('submit', (e) => {
             e.preventDefault();
@@ -138,8 +152,12 @@ class UIManager {
         document.getElementById('loginBtn').addEventListener('click', () => this.handleLogin());
         document.getElementById('registerBtn').addEventListener('click', () => this.handleRegister());
 
-        // Admin - save username
-        document.getElementById('saveUserName').addEventListener('click', () => this.changeUserName());
+        // Admin - save username (admin only)
+        document.getElementById('adminSaveUserName').addEventListener('click', () => this.adminChangeUserName());
+        document.getElementById('adminUserSelect').addEventListener('change', (e) => {
+            var selectedUser = appState.leaderboard.find(u => u.id === e.target.value);
+            if (selectedUser) document.getElementById('adminNewName').value = selectedUser.name || '';
+        });
     }
 
     // === THEME ===
@@ -494,6 +512,7 @@ class UIManager {
 
     // === CLASSEMENT ===
     renderLeaderboard() {
+        var self = this;
         var container = document.getElementById('leaderboardList');
         var lb = appState.leaderboard;
 
@@ -513,10 +532,18 @@ class UIManager {
 
             var rankDisplay = rank <= 3 ? ['\u{1F947}', '\u{1F948}', '\u{1F949}'][rank - 1] : rank;
 
-            return '<div class="leaderboard-item ' + (isCurrentUser ? 'current-user' : '') + '">' +
+            // Flèches de changement de classement
+            var rankChangeHtml = '';
+            if (user.rank_change && user.rank_change > 0) {
+                rankChangeHtml = '<span class="rank-change rank-up" title="+' + user.rank_change + ' place' + (user.rank_change > 1 ? 's' : '') + '"><i class="fas fa-caret-up"></i>' + user.rank_change + '</span>';
+            } else if (user.rank_change && user.rank_change < 0) {
+                rankChangeHtml = '<span class="rank-change rank-down" title="' + user.rank_change + ' place' + (user.rank_change < -1 ? 's' : '') + '"><i class="fas fa-caret-down"></i>' + Math.abs(user.rank_change) + '</span>';
+            }
+
+            return '<div class="leaderboard-item ' + (isCurrentUser ? 'current-user' : '') + '" style="cursor:pointer;" onclick="uiManager.openPlayerPredictions(\'' + user.id + '\', decodeURIComponent(\'' + encodeURIComponent(user.name) + '\'))">' +
                 '<div class="rank ' + rankClass + '">' + rankDisplay + '</div>' +
                 '<div class="player-info">' +
-                    '<div class="player-name">' + user.name + (isCurrentUser ? ' (Vous)' : '') + '</div>' +
+                    '<div class="player-name">' + user.name + (isCurrentUser ? ' (Vous)' : '') + rankChangeHtml + '</div>' +
                     '<div class="player-stats">' +
                         user.total_predictions + ' pronostic' + (user.total_predictions > 1 ? 's' : '') + ' \u2022 ' +
                         (user.accuracy || 0) + '% de reussite' +
@@ -525,6 +552,87 @@ class UIManager {
                 '<div class="player-points">' + user.points + '</div>' +
             '</div>';
         }).join('');
+    }
+
+    // === MODAL PRONOSTICS D'UN JOUEUR ===
+    async openPlayerPredictions(userId, playerName) {
+        var modal = document.getElementById('playerPredictionsModal');
+        document.getElementById('playerModalTitle').textContent = 'Pronostics de ' + playerName;
+        document.getElementById('playerPredictionsList').innerHTML = '<p class="text-center">Chargement...</p>';
+        modal.classList.add('active');
+
+        try {
+            var predictions = await apiClient.getUserPredictions(userId);
+            this._playerPredictionsData = predictions;
+            this._playerPredictionsFilter = 'all';
+            this.renderPlayerPredictions();
+        } catch (error) {
+            document.getElementById('playerPredictionsList').innerHTML = '<p class="text-center">Erreur de chargement</p>';
+        }
+    }
+
+    renderPlayerPredictions() {
+        var predictions = this._playerPredictionsData || [];
+        var filter = this._playerPredictionsFilter || 'all';
+
+        if (filter === 'pending') {
+            predictions = predictions.filter(function(p) { return p.match && p.match.status !== 'completed'; });
+        } else if (filter === 'completed') {
+            predictions = predictions.filter(function(p) { return p.match && p.match.status === 'completed'; });
+        }
+
+        // Trier : en cours d'abord (par date croissante), puis terminés (par date décroissante)
+        predictions.sort(function(a, b) {
+            var aCompleted = a.match && a.match.status === 'completed';
+            var bCompleted = b.match && b.match.status === 'completed';
+            if (aCompleted !== bCompleted) return aCompleted ? 1 : -1;
+            if (aCompleted) return new Date(b.match.date) - new Date(a.match.date);
+            return new Date(a.match.date) - new Date(b.match.date);
+        });
+
+        var container = document.getElementById('playerPredictionsList');
+        if (predictions.length === 0) {
+            container.innerHTML = '<p class="text-center">Aucun pronostic ' + (filter === 'pending' ? 'en cours' : filter === 'completed' ? 'terminé' : '') + '</p>';
+            return;
+        }
+
+        var self = this;
+        container.innerHTML = predictions.map(function(pred) {
+            var match = pred.match || {};
+            var isCompleted = match.status === 'completed';
+
+            // Pour les matchs non commencés, masquer le score prédit (sauf si c'est le joueur courant)
+            var matchStarted = new Date(match.date) <= new Date();
+            var isOwnPrediction = pred.user_id === (appState.currentUser ? appState.currentUser.id : null);
+            var showScore = isCompleted || matchStarted || isOwnPrediction;
+
+            var statusIcon = isCompleted
+                ? (pred.points_earned > 0 ? '<i class="fas fa-trophy" style="color:#f59e0b;"></i>' : '<i class="fas fa-times-circle" style="color:#ef4444;"></i>')
+                : '<i class="fas fa-clock" style="color:#3b82f6;"></i>';
+
+            var pointsHtml = isCompleted
+                ? '<span class="pp-points ' + (pred.points_earned > 0 ? 'success' : 'error') + '">' + (pred.points_earned > 0 ? '+' + pred.points_earned : '0') + ' pt' + (pred.points_earned > 1 ? 's' : '') + '</span>'
+                : '<span class="pp-points pending">En attente</span>';
+
+            var scoreDisplay = showScore
+                ? '<span class="pp-score">' + pred.team1_score + ' - ' + pred.team2_score + '</span>'
+                : '<span class="pp-score hidden-score"><i class="fas fa-eye-slash"></i> Masqué</span>';
+
+            return '<div class="pp-item ' + (isCompleted ? 'pp-completed' : 'pp-pending') + '">' +
+                '<div class="pp-status">' + statusIcon + '</div>' +
+                '<div class="pp-match">' +
+                    '<div class="pp-teams">' + getTeamFlag(match.team1) + ' ' + match.team1 + ' vs ' + match.team2 + ' ' + getTeamFlag(match.team2) + '</div>' +
+                    '<div class="pp-date">' + self.formatDate(match.date) + '</div>' +
+                '</div>' +
+                '<div class="pp-prediction">' + scoreDisplay + '</div>' +
+                '<div class="pp-result">' + pointsHtml + '</div>' +
+            '</div>';
+        }).join('');
+    }
+
+    closePlayerModal() {
+        document.getElementById('playerPredictionsModal').classList.remove('active');
+        this._playerPredictionsData = null;
     }
 
     // === MODAL PRONOSTIC ===
@@ -585,11 +693,29 @@ class UIManager {
         if (!appState.isAdmin) return;
 
         var user = appState.currentUser;
-        var userNameInput = document.getElementById('userNameInput');
-        if (userNameInput) userNameInput.value = user.name;
+        var userNameDisplay = document.getElementById('userNameDisplay');
+        if (userNameDisplay) userNameDisplay.textContent = user.name;
 
         document.getElementById('memberSince').textContent = user.created_at ? this.formatDate(user.created_at) : '-';
         document.getElementById('lastActivity').textContent = user.last_activity ? this.formatDate(user.last_activity) : '-';
+
+        // Remplir la liste des joueurs pour la modification de pseudo (admin)
+        var select = document.getElementById('adminUserSelect');
+        if (select) {
+            select.innerHTML = '<option value="">-- Sélectionner un joueur --</option>';
+            appState.leaderboard.forEach(function(u) {
+                var opt = document.createElement('option');
+                opt.value = u.id;
+                opt.textContent = u.name;
+                select.appendChild(opt);
+            });
+        }
+        document.getElementById('adminNewName').value = '';
+
+        // Afficher/masquer les sections admin uniquement
+        document.querySelectorAll('.admin-only-section').forEach(function(el) {
+            el.style.display = appState.isAdmin ? '' : 'none';
+        });
 
         document.getElementById('totalUsers').textContent = appState.leaderboard.length;
         document.getElementById('totalPredictionsAdmin').textContent = appState.leaderboard.reduce(function(s, u) { return s + u.total_predictions; }, 0);
@@ -678,22 +804,27 @@ class UIManager {
         }
     }
 
-    async changeUserName() {
-        var newName = document.getElementById('userNameInput').value.trim();
-        if (!newName) {
-            this.showToast('Le pseudonyme ne peut pas etre vide', 'error');
+    async adminChangeUserName() {
+        var userId = document.getElementById('adminUserSelect').value;
+        var newName = document.getElementById('adminNewName').value.trim();
+        if (!userId) {
+            this.showToast('Veuillez sélectionner un joueur', 'error');
             return;
         }
-        if (newName === appState.currentUser.name) {
-            this.showToast('Le pseudonyme est identique', 'warning');
+        if (!newName) {
+            this.showToast('Le pseudonyme ne peut pas être vide', 'error');
             return;
         }
 
         try {
-            var data = await apiClient.updateUserName(appState.currentUser.id, newName);
-            appState.currentUser.name = data.user.name;
-            this.updateHeader();
-            this.showToast('Pseudonyme modifie !', 'success');
+            var data = await apiClient.updateUserName(userId, newName);
+            // Si c'est l'utilisateur courant, mettre a jour le header
+            if (userId === appState.currentUser.id) {
+                appState.currentUser.name = data.user.name;
+                this.updateHeader();
+            }
+            this.showToast('Pseudonyme modifié !', 'success');
+            await this.loadAllData();
         } catch (error) {
             this.showToast(error.message, 'error');
         }

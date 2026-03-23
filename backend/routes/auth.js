@@ -24,6 +24,12 @@ router.post('/register', async (req, res) => {
             return res.status(409).json({ error: 'Cet email est déjà utilisé' });
         }
 
+        // Vérifier si le pseudo est déjà utilisé
+        const existingName = await User.findByName(name);
+        if (existingName) {
+            return res.status(409).json({ error: 'Ce pseudonyme est déjà utilisé' });
+        }
+
         const user = await User.create({ name, email, password });
 
         const token = jwt.sign(

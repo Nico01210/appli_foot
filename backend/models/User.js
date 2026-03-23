@@ -53,6 +53,13 @@ class User {
         return row ? new User(row) : null;
     }
 
+    // Trouver un utilisateur par pseudo
+    static async findByName(name) {
+        const sql = 'SELECT * FROM users WHERE LOWER(name) = LOWER(?)';
+        const row = await dbUtils.get(sql, [name]);
+        return row ? new User(row) : null;
+    }
+
     // Obtenir tous les utilisateurs
     static async findAll() {
         const sql = 'SELECT * FROM users ORDER BY points DESC, name ASC';

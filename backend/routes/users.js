@@ -29,30 +29,36 @@ router.get('/:id', async (req, res) => {
     }
 });
 
-// Mettre à jour le nom d'utilisateur
+// Mettre à jour le nom d'utilisateur (admin uniquement)
 router.put('/:id/name', authenticateToken, async (req, res) => {
     try {
         const { id } = req.params;
         const { name } = req.body;
 
-        // Vérifier que l'utilisateur modifie son propre profil
-        if (req.user.userId !== id) {
-            return res.status(403).json({ error: 'Non autorisé' });
+        // Seuls les admins peuvent modifier les pseudos
+        if (!req.user.isAdmin) {
+            return res.status(403).json({ error: 'Seuls les administrateurs peuvent modifier les pseudonymes' });
         }
 
         if (!name || name.trim().length === 0) {
-            return res.status(400).json({ error: 'Le nom ne peut pas être vide' });
+            return res.status(400).json({ error: 'Le pseudonyme ne peut pas être vide' });
+        }
+
+        // Vérifier que le pseudo n'est pas déjà pris par un autre utilisateur
+        const existingUser = await User.findByName(name.trim());
+        if (existingUser && existingUser.id !== id) {
+            return res.status(409).json({ error: 'Ce pseudonyme est déjà utilisé' });
         }
 
         await User.updateName(id, name.trim());
         const updatedUser = await User.findById(id);
         
         res.json({
-            message: 'Nom mis à jour avec succès',
+            message: 'Pseudonyme mis à jour avec succès',
             user: updatedUser.toPublic()
         });
     } catch (error) {
-        console.error('Erreur lors de la mise à jour du nom:', error);
+        console.error('Erreur lors de la mise à jour du pseudonyme:', error);
         res.status(500).json({ error: 'Erreur serveur' });
     }
 });

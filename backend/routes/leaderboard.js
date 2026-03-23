@@ -10,19 +10,41 @@ router.get('/', async (req, res) => {
         const limit = Math.min(100, Math.max(1, parseInt(req.query.limit) || 50));
         
         const users = await User.findAll();
+
+        // Récupérer le dernier match terminé pour obtenir le classement précédent
+        const lastCompletedMatch = await dbUtils.get(`
+            SELECT id FROM matches WHERE status = 'completed' ORDER BY updated_at DESC LIMIT 1
+        `);
+
+        let previousRanks = {};
+        if (lastCompletedMatch) {
+            const ranks = await dbUtils.all(`
+                SELECT user_id, rank FROM rank_history WHERE match_id = ?
+            `, [lastCompletedMatch.id]);
+            ranks.forEach(r => { previousRanks[r.user_id] = r.rank; });
+        }
         
         // Formatage du classement
-        const leaderboard = users.map((user, index) => ({
-            rank: index + 1,
-            id: user.id,
-            name: user.name,
-            points: user.points,
-            total_predictions: user.total_predictions,
-            correct_predictions: user.correct_predictions,
-            accuracy: user.total_predictions > 0 
-                ? Math.round((user.correct_predictions / user.total_predictions) * 100) 
-                : 0
-        }));
+        const leaderboard = users.map((user, index) => {
+            const currentRank = index + 1;
+            const prevRank = previousRanks[user.id];
+            let rank_change = 0;
+            if (prevRank !== undefined) {
+                rank_change = prevRank - currentRank; // positif = montée, négatif = descente
+            }
+            return {
+                rank: currentRank,
+                id: user.id,
+                name: user.name,
+                points: user.points,
+                total_predictions: user.total_predictions,
+                correct_predictions: user.correct_predictions,
+                accuracy: user.total_predictions > 0 
+                    ? Math.round((user.correct_predictions / user.total_predictions) * 100) 
+                    : 0,
+                rank_change: rank_change
+            };
+        });
 
         const start = (page - 1) * limit;
         const paginated = leaderboard.slice(start, start + limit);

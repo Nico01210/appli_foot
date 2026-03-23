@@ -85,6 +85,14 @@ router.put('/:id/score', authenticateToken, requireAdmin, async (req, res) => {
             });
         }
 
+        // Sauvegarder le classement actuel avant le calcul des points
+        const User = require('../models/User');
+        const allUsers = await User.findAll();
+        for (let i = 0; i < allUsers.length; i++) {
+            const rankSql = `INSERT OR REPLACE INTO rank_history (user_id, rank, match_id, recorded_at) VALUES (?, ?, ?, ?)`;
+            await require('../models/database').dbUtils.run(rankSql, [allUsers[i].id, i + 1, id, new Date().toISOString()]);
+        }
+
         // Mettre à jour le score du match
         await Match.updateScore(id, team1_score, team2_score);
         
