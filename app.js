@@ -164,6 +164,16 @@ class UIManager {
             var selectedUser = appState.leaderboard.find(u => u.id === e.target.value);
             if (selectedUser) document.getElementById('adminNewName').value = selectedUser.name || '';
         });
+
+        // Admin - delete user (admin only)
+        document.getElementById('adminDeleteUser').addEventListener('click', () => this.adminDeleteUser());
+        document.getElementById('adminUserToDelete').addEventListener('change', (e) => {
+            var deleteBtn = document.getElementById('adminDeleteUser');
+            deleteBtn.disabled = !e.target.value;
+            deleteBtn.textContent = e.target.value ? 
+                `Supprimer "${e.target.options[e.target.selectedIndex].text}"` : 
+                'Supprimer définitivement';
+        });
     }
 
     // === THEME ===
@@ -780,6 +790,21 @@ class UIManager {
         }
         document.getElementById('adminNewName').value = '';
 
+        // Remplir la liste des utilisateurs pour suppression (admin)
+        var deleteSelect = document.getElementById('adminUserToDelete');
+        if (deleteSelect && appState.currentUser) {
+            deleteSelect.innerHTML = '<option value="">Sélectionner un utilisateur...</option>';
+            appState.leaderboard.forEach(function(u) {
+                // Exclure l'utilisateur actuel de la liste de suppression
+                if (u.id !== appState.currentUser.id) {
+                    var opt = document.createElement('option');
+                    opt.value = u.id;
+                    opt.textContent = `${u.name} (${u.total_predictions || 0} pronostics)`;
+                    deleteSelect.appendChild(opt);
+                }
+            });
+        }
+
         // Afficher/masquer les sections admin uniquement
         document.querySelectorAll('.admin-only-section').forEach(function(el) {
             el.style.display = appState.isAdmin ? '' : 'none';
@@ -893,6 +918,62 @@ class UIManager {
             }
             this.showToast('Pseudonyme modifié !', 'success');
             await this.loadAllData();
+        } catch (error) {
+            this.showToast(error.message, 'error');
+        }
+    }
+
+    async adminDeleteUser() {
+        var userId = document.getElementById('adminUserToDelete').value;
+        if (!userId) {
+            this.showToast('Veuillez sélectionner un utilisateur', 'error');
+            return;
+        }
+
+        // Récupérer les infos utilisateur pour confirmation
+        var userToDelete = appState.leaderboard.find(u => u.id === parseInt(userId));
+        if (!userToDelete) {
+            this.showToast('Utilisateur introuvable', 'error');
+            return;
+        }
+
+        // Vérifier qu'on ne supprime pas son propre compte
+        if (parseInt(userId) === appState.currentUser.id) {
+            this.showToast('Impossible de supprimer votre propre compte', 'error');
+            return;
+        }
+
+        // Demande de confirmation avec détails
+        var confirmMessage = `⚠️ SUPPRESSION DÉFINITIVE ⚠️\n\n` +
+            `Utilisateur : ${userToDelete.name}\n` +
+            `Pronostics : ${userToDelete.total_predictions || 0}\n` +
+            `Points actuels : ${userToDelete.points || 0}\n\n` +
+            `Cette action est IRRÉVERSIBLE et supprimera :\n` +
+            `• Tous les pronostics de cet utilisateur\n` +
+            `• Son historique dans le classement\n` +
+            `• Son compte définitivement\n\n` +
+            `Tapez "${userToDelete.name}" pour confirmer :`;
+
+        var confirmation = prompt(confirmMessage);
+        if (confirmation !== userToDelete.name) {
+            if (confirmation !== null) {
+                this.showToast('Confirmation incorrecte, suppression annulée', 'info');
+            }
+            return;
+        }
+
+        try {
+            this.showToast('Suppression en cours...', 'info');
+            var result = await apiClient.deleteUser(userId);
+            
+            this.showToast(`${result.deletedUser.name} supprimé avec succès (${result.deletedUser.predictionsCount} prédictions supprimées)`, 'success');
+            
+            // Rafraîchir les données et réinitialiser les selects
+            await this.loadAllData();
+            document.getElementById('adminUserToDelete').value = '';
+            document.getElementById('adminDeleteUser').disabled = true;
+            document.getElementById('adminDeleteUser').textContent = 'Supprimer définitivement';
+            
         } catch (error) {
             this.showToast(error.message, 'error');
         }

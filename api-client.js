@@ -78,7 +78,12 @@ class APIClient {
             body: JSON.stringify({ name })
         });
     }
-
+    // Supprimer un utilisateur (admin uniquement)
+    async deleteUser(id) {
+        return await this.request(`/users/${id}`, {
+            method: 'DELETE'
+        });
+    }
     // === MATCHES ===
     async getMatches(userId = null) {
         let endpoint = '/matches';

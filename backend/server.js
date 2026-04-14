@@ -18,6 +18,9 @@ const leaderboardRoutes = require('./routes/leaderboard');
 // Import database
 const db = require('./models/database');
 
+// Import services
+const AutoScoreUpdater = require('./services/scoreUpdater');
+
 const app = express();
 const PORT = process.env.PORT || 3001;
 
@@ -74,6 +77,19 @@ app.listen(PORT, '0.0.0.0', () => {
     console.log(`🚀 Serveur backend démarré sur le port ${PORT}`);
     console.log(`🌐 Frontend accessible sur http://localhost:${PORT}`);
     console.log(`📡 API disponible sur http://localhost:${PORT}/api`);
+    
+    // Démarrage de l'automatisation des scores (optionnel)
+    if (process.env.AUTO_SCORE_UPDATE === 'true') {
+        const scoreUpdater = new AutoScoreUpdater();
+        scoreUpdater.start();
+        console.log('🤖 Mise à jour automatique des scores activée');
+        
+        // Arrêt propre lors de la fermeture
+        process.on('SIGTERM', () => scoreUpdater.stop());
+        process.on('SIGINT', () => scoreUpdater.stop());
+    } else {
+        console.log('⏸️  Mise à jour automatique désactivée (définir AUTO_SCORE_UPDATE=true pour activer)');
+    }
 });
 
 module.exports = app;

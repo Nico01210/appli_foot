@@ -3,6 +3,7 @@ const router = express.Router();
 const User = require('../models/User');
 const authModule = require('./auth');
 const authenticateToken = authModule.authenticateToken;
+const requireAdmin = authModule.requireAdmin;
 
 // Obtenir tous les utilisateurs
 router.get('/', async (req, res) => {
@@ -86,6 +87,61 @@ router.get('/:id/stats', async (req, res) => {
     } catch (error) {
         console.error('Erreur lors de la récupération des statistiques:', error);
         res.status(500).json({ error: 'Erreur serveur' });
+    }
+});
+
+// Supprimer un utilisateur (admin seulement)
+router.delete('/:id', authenticateToken, requireAdmin, async (req, res) => {
+    try {
+        const userId = req.params.id;
+        const currentUserId = req.user.userId;
+
+        // Vérification de sécurité : empêcher l'auto-suppression
+        if (parseInt(userId) === parseInt(currentUserId)) {
+            return res.status(400).json({ 
+                error: 'Impossible de supprimer votre propre compte' 
+            });
+        }
+
+        // Vérifier que l'utilisateur existe
+        const userExists = await User.exists(userId);
+        if (!userExists) {
+            return res.status(404).json({ error: 'Utilisateur non trouvé' });
+        }
+
+        // Récupérer les infos utilisateur pour logs
+        const userToDelete = await User.findById(userId);
+        const userPredictions = await User.countUserPredictions(userId);
+
+        console.log(`🗑️  Admin ${req.user.name} supprime utilisateur: ${userToDelete.name} (${userPredictions} prédictions)`);
+
+        // Suppression en cascade (comme pour les matchs)
+        const Prediction = require('../models/Prediction');
+        
+        // 1. Supprimer l'historique des rangs
+        await Prediction.deleteRankHistoryByUser(userId);
+        
+        // 2. Supprimer les prédictions
+        await Prediction.deleteByUser(userId);
+        
+        // 3. Supprimer l'utilisateur
+        await User.delete(userId);
+
+        // Recalcul des rangs des autres utilisateurs après suppression
+        await Prediction.updateUserTotals();
+
+        res.json({ 
+            message: `Utilisateur '${userToDelete.name}' supprimé avec succès`,
+            deletedUser: {
+                id: userToDelete.id,
+                name: userToDelete.name,
+                predictionsCount: userPredictions
+            }
+        });
+
+    } catch (error) {
+        console.error('Erreur suppression utilisateur:', error);
+        res.status(500).json({ error: 'Erreur lors de la suppression de l\'utilisateur' });
     }
 });
 

@@ -152,4 +152,37 @@ router.delete('/:id', authenticateToken, requireAdmin, async (req, res) => {
     }
 });
 
+// Nouvelle route : Test automatisation pour un match spécifique
+router.post('/:id/auto-update', authenticateToken, requireAdmin, async (req, res) => {
+    try {
+        const { id } = req.params;
+        
+        // Importer le service (pas global pour éviter les erreurs si désactivé)
+        const AutoScoreUpdater = require('../services/scoreUpdater');
+        const scoreUpdater = new AutoScoreUpdater();
+        
+        const match = await dbUtils.get('SELECT * FROM matches WHERE id = ?', [id]);
+        if (!match) {
+            return res.status(404).json({ error: 'Match non trouvé' });
+        }
+        
+        if (match.status === 'completed') {
+            return res.status(400).json({ error: 'Match déjà terminé' });
+        }
+        
+        console.log(`🤖 Test automatisation demandé par admin pour match ${id}`);
+        await scoreUpdater.updateSingleMatch(match);
+        
+        const updatedMatch = await dbUtils.get('SELECT * FROM matches WHERE id = ?', [id]);
+        res.json({ 
+            message: 'Test automatisation effectué',
+            match: updatedMatch
+        });
+        
+    } catch (error) {
+        console.error('Erreur test automatisation:', error);
+        res.status(500).json({ error: 'Erreur lors du test automatisation' });
+    }
+});
+
 module.exports = router;

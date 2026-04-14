@@ -182,10 +182,22 @@ class Prediction {
         return await dbUtils.run(sql, [predictionId]);
     }
 
-    // Supprimer toutes les prédictions d'un match
+    // Supprimer toutes les prédictions d'un match (pour suppression de match)
     static async deleteByMatch(matchId) {
         const sql = 'DELETE FROM predictions WHERE match_id = ?';
         return await dbUtils.run(sql, [matchId]);
+    }
+
+    // Supprimer toutes les prédictions d'un utilisateur (pour suppression d'utilisateur)
+    static async deleteByUser(userId) {
+        const sql = 'DELETE FROM predictions WHERE user_id = ?';
+        return await dbUtils.run(sql, [userId]);
+    }
+
+    // Supprimer l'historique des rangs d'un utilisateur
+    static async deleteRankHistoryByUser(userId) {
+        const sql = 'DELETE FROM rank_history WHERE user_id = ?';
+        return await dbUtils.run(sql, [userId]);
     }
 }
 

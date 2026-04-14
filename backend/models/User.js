@@ -101,6 +101,26 @@ class User {
         const { password_hash, ...publicData } = this;
         return publicData;
     }
+
+    // Supprimer un utilisateur
+    static async delete(userId) {
+        const sql = 'DELETE FROM users WHERE id = ?';
+        return await dbUtils.run(sql, [userId]);
+    }
+
+    // Vérifier si l'utilisateur existe
+    static async exists(userId) {
+        const sql = 'SELECT COUNT(*) as count FROM users WHERE id = ?';
+        const result = await dbUtils.get(sql, [userId]);
+        return result.count > 0;
+    }
+
+    // Compter les pronostics d'un utilisateur
+    static async countUserPredictions(userId) {
+        const sql = 'SELECT COUNT(*) as count FROM predictions WHERE user_id = ?';
+        const result = await dbUtils.get(sql, [userId]);
+        return result.count;
+    }
 }
 
 module.exports = User;

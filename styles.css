@@ -1015,6 +1015,21 @@ body {
     color: white;
 }
 
+/* États des boutons */
+.btn:disabled {
+    background-color: #e9ecef !important;
+    color: #6c757d !important;
+    border-color: #dee2e6 !important;
+    cursor: not-allowed !important;
+    opacity: 0.6;
+}
+
+[data-theme="dark"] .btn:disabled {
+    background-color: #343a40 !important;
+    color: #6c757d !important;
+    border-color: #495057 !important;
+}
+
 /* Modal */
 .modal {
     display: none;
